@@ -54,7 +54,7 @@ export default function Home() {
 
           <nav className="flex items-center gap-4">
             <Link
-              href="https://github.com"
+              href="https://github.com/EdvinCodes/kilobye"
               target="_blank"
               className="group flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
             >

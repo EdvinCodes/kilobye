@@ -1,36 +1,45 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# KiloBye ⚡
 
-## Getting Started
+> **Make it smol.**
+> Herramienta de compresión de imágenes extrema, privada y ejecutada en el cliente.
 
-First, run the development server:
+![KiloBye Preview](/public/preview.webp)
+
+## 🚀 Tecnologías (The Stack)
+
+Construido con lo último del ecosistema React para 2026:
+
+- **Framework:** [Next.js 16](https://nextjs.org/) (App Router)
+- **Lenguaje:** TypeScript
+- **Estilos:** Tailwind CSS v4 + Shadcn/UI
+- **Motor:** `browser-image-compression` (WebAssembly/JS) + Web Workers
+- **Estado:** Zustand
+- **Animaciones:** Framer Motion
+
+## ✨ Características
+
+- [x] **Privacidad Total:** Las imágenes se procesan en tu navegador, no se suben a ningún servidor.
+- [x] **Drag & Drop:** Interfaz fluida con animaciones.
+- [x] **Compresión Inteligente:** Reducción de hasta un 90% en JPG/PNG/WebP.
+- [x] **Modo Batch:** Procesa múltiples imágenes en paralelo.
+- [x] **Exportación ZIP:** Descarga todo en un solo click.
+
+## 🛠️ Instalación local
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+# Clonar el repo
+git clone https://github.com/EdvinCodes/kilobye.git
+
+# Entrar
+cd kilobye
+
+# Instalar dependencias (Usamos pnpm por velocidad)
+pnpm install
+
+# Arrancar servidor de desarrollo
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Creado con ❤️ por Edvin
