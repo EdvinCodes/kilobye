@@ -21,9 +21,23 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+export const viewport = {
+  themeColor: "#7c3aed", // El color de la barra de estado en Android
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false, // Se siente más "App" si no dejan hacer zoom a toda la interfaz
+};
+
 export const metadata: Metadata = {
   title: "KiloBye - Pixel Perfect Compression",
   description: "Make it smol. Retro style.",
+  manifest: "/manifest.json", // Next.js genera esto automáticamente desde manifest.ts
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "KiloBye",
+  },
 };
 
 export default function RootLayout({
