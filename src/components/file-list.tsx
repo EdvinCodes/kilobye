@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input"; // <--- NUEVO IMPORT
+import { Input } from "@/components/ui/input";
 
 export function FileList() {
   const { files, updateFile } = useFileStore();
@@ -95,7 +95,9 @@ export function FileList() {
           </p>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto items-center">
+        {/* CONTROLES (DERECHA) */}
+        {/* AÑADIDO: flex-wrap para evitar desbordamiento en pantallas medianas */}
+        <div className="flex flex-col sm:flex-row flex-wrap gap-4 w-full lg:w-auto items-center justify-end">
           {/* INPUT: TAMAÑO MÁXIMO */}
           <div className="flex items-center gap-2 w-full sm:w-auto">
             <Label
@@ -105,19 +107,18 @@ export function FileList() {
               MAX WIDTH:
             </Label>
             <div className="relative w-full sm:w-auto">
-              {/* En el Input del tamaño */}
               <Input
                 id="width"
                 type="number"
                 value={maxWidth === 0 ? "" : maxWidth}
-                // CAMBIO AQUÍ: Placeholder informativo
                 placeholder="Auto (1920)"
                 onChange={(e) => {
                   const val = Number(e.target.value);
                   setMaxWidth(isNaN(val) ? 0 : val);
                 }}
                 disabled={isProcessing || isAllDone}
-                className="w-full sm:w-[135px] h-9 font-mono text-xs border-2 border-primary/20 pr-8 placeholder:text-muted-foreground/50"
+                // CAMBIO: w-[160px] para que quepa el texto holgadamente
+                className="w-full sm:w-[160px] h-9 font-mono text-xs border-2 border-primary/20 pr-8 placeholder:text-muted-foreground/50"
                 min={100}
                 max={8000}
               />
@@ -174,7 +175,7 @@ export function FileList() {
                 size="lg"
                 onClick={handleCompressAll}
                 disabled={isProcessing || !hasPending}
-                className="w-full sm:w-auto rounded-full gap-2 shadow-lg shadow-primary/20"
+                className="w-full sm:w-auto rounded-full gap-2 shadow-lg shadow-primary/20 whitespace-nowrap"
               >
                 {isProcessing ? (
                   <>PROCESSING...</>

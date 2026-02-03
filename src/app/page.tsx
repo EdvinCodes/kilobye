@@ -1,4 +1,4 @@
-"use client"; // <--- 1. ESTA LÍNEA ES LA CLAVE
+"use client";
 
 import { UploadDropzone } from "@/components/upload-dropzone";
 import { FileList } from "@/components/file-list";
@@ -6,6 +6,8 @@ import Link from "next/link";
 import { Github, Volume2, VolumeX } from "lucide-react";
 import { useFileStore } from "@/store/file-store";
 import { Button } from "@/components/ui/button";
+// 1. IMPORTAMOS EL TOGGLE
+import { ThemeToggle } from "@/components/theme-toggle";
 
 // COMPONENTE LOGO
 const KiloByeLogo = () => (
@@ -59,6 +61,9 @@ export default function Home() {
           </div>
 
           <nav className="flex items-center gap-4">
+            {/* 2. AÑADIMOS EL TOGGLE AQUÍ */}
+            <ThemeToggle />
+
             {/* Botón de Sonido */}
             <Button
               variant="ghost"
