@@ -122,7 +122,7 @@ export default function Home() {
       </main>
 
       <footer className="py-8 text-center text-xs md:text-sm text-muted-foreground/60 border-t border-border/20 px-4">
-        <p>KiloBye © 2026. Mobile Friendly & Fast.</p>
+        <p>KiloBye © 2026</p>
       </footer>
     </div>
   );

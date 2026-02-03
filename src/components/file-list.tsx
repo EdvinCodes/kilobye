@@ -9,6 +9,7 @@ import { Zap, Archive } from "lucide-react";
 import { compressImage } from "@/lib/compression";
 import { downloadAllAsZip } from "@/lib/download-utils";
 import { useRetroSound } from "@/hooks/use-retro-sound";
+import { triggerPixelConfetti } from "@/lib/confetti";
 
 export function FileList() {
   const { playSuccess, playClick } = useRetroSound();
@@ -51,6 +52,8 @@ export function FileList() {
     );
 
     playSuccess();
+    triggerPixelConfetti();
+
     setIsProcessing(false);
   };
 
