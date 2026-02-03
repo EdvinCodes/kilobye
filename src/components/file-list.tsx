@@ -5,47 +5,57 @@ import { useFileStore } from "@/store/file-store";
 import { FileCard } from "./file-card";
 import { AnimatePresence, motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Zap, Archive } from "lucide-react";
-import { compressImage } from "@/lib/compression";
+import { Zap, Archive, Settings2 } from "lucide-react";
+import { compressImage, type OutputFormat } from "@/lib/compression"; // Importamos el tipo
 import { downloadAllAsZip } from "@/lib/download-utils";
-import { useRetroSound } from "@/hooks/use-retro-sound";
 import { triggerPixelConfetti } from "@/lib/confetti";
+import { useRetroSound } from "@/hooks/use-retro-sound";
+
+// NUEVOS IMPORTS DE SHADCN
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 
 export function FileList() {
-  const { playSuccess, playClick } = useRetroSound();
   const { files, updateFile } = useFileStore();
   const [isProcessing, setIsProcessing] = useState(false);
+  const { playSuccess, playClick } = useRetroSound();
 
-  // Estados derivados para la UI
+  // NUEVO: Estado para el formato de salida
+  const [outputFormat, setOutputFormat] = useState<OutputFormat>("original");
+
   const isAllDone = files.length > 0 && files.every((f) => f.status === "done");
   const hasPending = files.some((f) => f.status !== "done");
 
-  // Lógica de Compresión
   const handleCompressAll = async () => {
     setIsProcessing(true);
     playClick();
 
-    // Filtramos solo las que faltan por comprimir
     const pendingFiles = files.filter((f) => f.status !== "done");
 
-    // Ejecutamos en paralelo (Promesa masiva)
     await Promise.all(
       pendingFiles.map(async (imageFile) => {
         try {
-          // 1. Estado: Cargando
           updateFile(imageFile.id, { status: "compressing" });
 
-          // 2. Procesamiento real (WebWorker)
-          const compressedBlob = await compressImage(imageFile.file);
+          // NUEVO: Pasamos el 'outputFormat' a la función
+          const compressedBlob = await compressImage(
+            imageFile.file,
+            outputFormat,
+          );
 
-          // 3. Estado: Listo
           updateFile(imageFile.id, {
             status: "done",
             compressedFile: compressedBlob,
             compressedSize: compressedBlob.size,
           });
         } catch (error) {
-          console.error("Error en archivo:", imageFile.file.name, error);
+          console.error("Error:", error);
           updateFile(imageFile.id, { status: "error" });
         }
       }),
@@ -53,19 +63,15 @@ export function FileList() {
 
     playSuccess();
     triggerPixelConfetti();
-
     setIsProcessing(false);
   };
 
-  // Lógica de Descarga ZIP
   const handleDownloadZip = () => {
     downloadAllAsZip(files);
   };
 
-  // Si no hay archivos, no mostramos nada
   if (files.length === 0) return null;
 
-  // Cálculos para el resumen
   const totalOriginal = files.reduce((acc, f) => acc + f.originalSize, 0);
   const totalCompressed = files.reduce(
     (acc, f) => acc + (f.compressedSize || f.originalSize),
@@ -75,56 +81,83 @@ export function FileList() {
 
   return (
     <div className="w-full max-w-5xl mx-auto mt-12 space-y-8 pb-24 px-4">
-      {/* Cabecera de la sección */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-        <h2 className="text-2xl font-bold tracking-tight self-start">
-          Tus Imágenes{" "}
-          <span className="text-muted-foreground text-lg ml-2">
-            ({files.length})
-          </span>
-        </h2>
+      {/* Cabecera de la sección con CONTROLES */}
+      <div className="flex flex-col lg:flex-row items-end lg:items-center justify-between gap-6 p-4 border-2 border-border bg-card/50 rounded-xl shadow-sm">
+        <div className="flex flex-col gap-1 w-full lg:w-auto">
+          <h2 className="text-2xl font-bold tracking-tight retro-text flex items-center gap-2">
+            <Settings2 className="w-6 h-6" /> CONTROL PANEL
+          </h2>
+          <p className="text-muted-foreground text-xs font-mono">
+            {files.length} ITEMS LOADED
+          </p>
+        </div>
 
-        {/* EL BOTÓN INTELIGENTE (Cambia de función) */}
-        <div className="flex gap-2 w-full sm:w-auto">
-          {isAllDone ? (
-            <Button
-              size="lg"
-              onClick={handleDownloadZip}
-              className="w-full sm:w-auto rounded-full gap-2 shadow-lg bg-primary hover:bg-primary/90 animate-in zoom-in duration-300"
+        {/* NUEVO: SELECTOR DE FORMATO */}
+        <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto items-center">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <Label
+              htmlFor="format"
+              className="font-mono text-xs whitespace-nowrap"
             >
-              <Archive className="w-4 h-4" />
-              Descargar todo en ZIP
-              <span className="bg-primary-foreground/20 px-2 py-0.5 rounded text-xs ml-1">
-                -{Math.round((totalSaved / totalOriginal) * 100)}%
-              </span>
-            </Button>
-          ) : (
-            <Button
-              size="lg"
-              onClick={handleCompressAll}
-              disabled={isProcessing || !hasPending}
-              className="w-full sm:w-auto rounded-full gap-2 shadow-lg shadow-primary/20"
+              OUTPUT:
+            </Label>
+            <Select
+              value={outputFormat}
+              onValueChange={(val) => setOutputFormat(val as OutputFormat)}
+              disabled={isProcessing || isAllDone} // Bloquear si ya terminó
             >
-              {isProcessing ? (
-                <>Comprimiendo...</>
-              ) : (
-                <>
-                  <Zap className="w-4 h-4 fill-current" /> Comprimir Todo
-                </>
-              )}
-            </Button>
-          )}
+              <SelectTrigger
+                id="format"
+                className="w-full sm:w-[140px] h-9 font-mono text-xs border-2 border-primary/20"
+              >
+                <SelectValue placeholder="Format" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="original">ORIGINAL</SelectItem>
+                <SelectItem value="image/jpeg">.JPG (Small)</SelectItem>
+                <SelectItem value="image/png">.PNG (Crisp)</SelectItem>
+                <SelectItem value="image/webp">.WEBP (Modern)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* BOTÓN DE ACCIÓN */}
+          <div className="w-full sm:w-auto">
+            {isAllDone ? (
+              <Button
+                size="lg"
+                onClick={handleDownloadZip}
+                className="w-full sm:w-auto rounded-full gap-2 shadow-lg bg-primary hover:bg-primary/90 animate-in zoom-in duration-300"
+              >
+                <Archive className="w-4 h-4" />
+                ZIP DOWNLOAD
+                <span className="bg-primary-foreground/20 px-2 py-0.5 rounded text-xs ml-1">
+                  -{Math.round((totalSaved / totalOriginal) * 100)}%
+                </span>
+              </Button>
+            ) : (
+              <Button
+                size="lg"
+                onClick={handleCompressAll}
+                disabled={isProcessing || !hasPending}
+                className="w-full sm:w-auto rounded-full gap-2 shadow-lg shadow-primary/20"
+              >
+                {isProcessing ? (
+                  <>PROCESSING...</>
+                ) : (
+                  <>
+                    <Zap className="w-4 h-4 fill-current" /> START ENGINE
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Grid de Tarjetas */}
       <motion.div
         layout
-        // FIX RESPONSIVE:
-        // grid-cols-1 (Móvil vertical) -> 1 columna grande
-        // sm:grid-cols-2 (Móvil grande/Tablet) -> 2 columnas
-        // md:grid-cols-3 (Laptop) -> 3 columnas
-        // lg:grid-cols-4 (Desktop) -> 4 columnas
         className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
       >
         <AnimatePresence mode="popLayout">

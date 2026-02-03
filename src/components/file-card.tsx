@@ -3,11 +3,10 @@
 import { motion } from "framer-motion";
 import { X, Download } from "lucide-react";
 import { ImageFile, useFileStore } from "@/store/file-store";
-import { formatBytes } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { downloadBlob } from "@/lib/download-utils";
 import Image from "next/image";
-import { cn } from "@/lib/utils";
+import { cn, formatBytes, getCorrectFileName } from "@/lib/utils";
 import { useRetroSound } from "@/hooks/use-retro-sound";
 
 interface FileCardProps {
@@ -20,7 +19,14 @@ export function FileCard({ fileData }: FileCardProps) {
 
   const handleDownload = () => {
     if (fileData.compressedFile) {
-      downloadBlob(fileData.compressedFile, fileData.file.name);
+      // 2. CALCULAR NOMBRE CORRECTO
+      const correctName = getCorrectFileName(
+        fileData.file.name,
+        fileData.compressedFile,
+      );
+
+      // 3. USARLO
+      downloadBlob(fileData.compressedFile, correctName);
     }
   };
 
