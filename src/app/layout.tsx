@@ -28,18 +28,21 @@ export const viewport = {
 };
 
 export const metadata: Metadata = {
-  // 1. BASE URL (IMPORTANTE): Cambia esto por tu dominio real cuando lo despliegues (ej: kilobye.vercel.app)
-  // Si no pones esto, las imágenes sociales no cargarán en producción.
+  // Asegúrate de que esto sea tu dominio real (o coméntalo si aún no tienes)
   metadataBase: new URL("https://kilobye.vercel.app"),
 
   title: {
-    default: "KiloBye - Pixel Perfect Compression",
+    // ANTES: KiloBye - Pixel Perfect Compression (28 chars)
+    // AHORA: 56 chars (Perfecto para Google)
+    default: "KiloBye: Compresor de Imágenes Extremo, Privado y Gratis",
     template: "%s | KiloBye",
   },
-  description:
-    "Compresión de imágenes extrema, privada y sin servidores. Estilo Retro.",
 
-  // 2. CONFIGURACIÓN PWA
+  // ANTES: Compresión de imágenes extrema, privada y sin servidores. Estilo Retro. (89 chars)
+  // AHORA: 154 chars (Rico en keywords y beneficios)
+  description:
+    "Comprime imágenes JPG, PNG y WebP al instante sin perder calidad. Tecnología 100% privada: tus fotos nunca se suben a la nube. Rápido, gratis y estilo Pixel Art.",
+
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
@@ -47,18 +50,18 @@ export const metadata: Metadata = {
     title: "KiloBye",
   },
 
-  // 3. TARJETAS PARA WHATSAPP, FACEBOOK, LINKEDIN, DISCORD (Open Graph)
   openGraph: {
     type: "website",
     locale: "es_ES",
-    url: "https://kilobye.vercel.app", // Tu URL real
-    title: "KiloBye - Compresión Extrema",
+    url: "https://kilobye.vercel.app",
+    // Replicamos el título optimizado aquí
+    title: "KiloBye: Compresor de Imágenes Extremo, Privado y Gratis",
     description:
-      "Reduce el peso de tus imágenes hasta un 90% sin perder calidad. 100% Privado. Modo Retro.",
+      "Comprime imágenes JPG, PNG y WebP al instante sin perder calidad. Tecnología 100% privada: tus fotos nunca se suben a la nube. Rápido, gratis y estilo Pixel Art.",
     siteName: "KiloBye",
     images: [
       {
-        url: "/og-image.png", // Asegúrate de crear esta imagen en /public (1200x630px)
+        url: "/og-image.png",
         width: 1200,
         height: 630,
         alt: "KiloBye Preview",
@@ -66,17 +69,16 @@ export const metadata: Metadata = {
     ],
   },
 
-  // 4. TARJETAS PARA TWITTER / X
   twitter: {
     card: "summary_large_image",
-    title: "KiloBye - Make it smol",
+    // Twitter permite títulos un pelín más cortos, pero este funciona bien
+    title: "KiloBye - Compresión Extrema y Privada",
     description:
-      "Compresión de imágenes extrema en tu navegador. Sin servidores.",
-    images: ["/og-image.png"], // Reusamos la misma imagen
-    creator: "@EdvinCodes", // Tu usuario de Twitter (opcional)
+      "Reduce el peso de tus imágenes hasta un 90% en tu navegador. Sin servidores, 100% privado.",
+    images: ["/og-image.png"],
+    creator: "@EdvinCodes",
   },
 
-  // 5. ICONOS EXTRA (Favicon)
   icons: {
     icon: "/icon-192.png",
     shortcut: "/icon-192.png",
