@@ -6,12 +6,12 @@ import { FileCard } from "./file-card";
 import { AnimatePresence, motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Zap, Archive, Settings2 } from "lucide-react";
-import { compressImage, type OutputFormat } from "@/lib/compression"; // Importamos el tipo
+import { compressImage, type OutputFormat } from "@/lib/compression";
 import { downloadAllAsZip } from "@/lib/download-utils";
 import { triggerPixelConfetti } from "@/lib/confetti";
 import { useRetroSound } from "@/hooks/use-retro-sound";
 
-// NUEVOS IMPORTS DE SHADCN
+// Imports UI
 import {
   Select,
   SelectContent,
@@ -20,14 +20,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input"; // <--- NUEVO IMPORT
 
 export function FileList() {
   const { files, updateFile } = useFileStore();
   const [isProcessing, setIsProcessing] = useState(false);
   const { playSuccess, playClick } = useRetroSound();
 
-  // NUEVO: Estado para el formato de salida
+  // Estados de configuración
   const [outputFormat, setOutputFormat] = useState<OutputFormat>("original");
+  const [maxWidth, setMaxWidth] = useState<number>(0);
 
   const isAllDone = files.length > 0 && files.every((f) => f.status === "done");
   const hasPending = files.some((f) => f.status !== "done");
@@ -43,10 +45,11 @@ export function FileList() {
         try {
           updateFile(imageFile.id, { status: "compressing" });
 
-          // NUEVO: Pasamos el 'outputFormat' a la función
+          // Pasamos el formato Y el tamaño máximo
           const compressedBlob = await compressImage(
             imageFile.file,
             outputFormat,
+            maxWidth,
           );
 
           updateFile(imageFile.id, {
@@ -81,7 +84,7 @@ export function FileList() {
 
   return (
     <div className="w-full max-w-5xl mx-auto mt-12 space-y-8 pb-24 px-4">
-      {/* Cabecera de la sección con CONTROLES */}
+      {/* PANEL DE CONTROL */}
       <div className="flex flex-col lg:flex-row items-end lg:items-center justify-between gap-6 p-4 border-2 border-border bg-card/50 rounded-xl shadow-sm">
         <div className="flex flex-col gap-1 w-full lg:w-auto">
           <h2 className="text-2xl font-bold tracking-tight retro-text flex items-center gap-2">
@@ -92,8 +95,39 @@ export function FileList() {
           </p>
         </div>
 
-        {/* NUEVO: SELECTOR DE FORMATO */}
         <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto items-center">
+          {/* INPUT: TAMAÑO MÁXIMO */}
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <Label
+              htmlFor="width"
+              className="font-mono text-xs whitespace-nowrap"
+            >
+              MAX WIDTH:
+            </Label>
+            <div className="relative w-full sm:w-auto">
+              {/* En el Input del tamaño */}
+              <Input
+                id="width"
+                type="number"
+                value={maxWidth === 0 ? "" : maxWidth}
+                // CAMBIO AQUÍ: Placeholder informativo
+                placeholder="Auto (1920)"
+                onChange={(e) => {
+                  const val = Number(e.target.value);
+                  setMaxWidth(isNaN(val) ? 0 : val);
+                }}
+                disabled={isProcessing || isAllDone}
+                className="w-full sm:w-[135px] h-9 font-mono text-xs border-2 border-primary/20 pr-8 placeholder:text-muted-foreground/50"
+                min={100}
+                max={8000}
+              />
+              <span className="absolute right-3 top-2.5 text-[10px] text-muted-foreground font-mono pointer-events-none">
+                px
+              </span>
+            </div>
+          </div>
+
+          {/* INPUT: FORMATO */}
           <div className="flex items-center gap-2 w-full sm:w-auto">
             <Label
               htmlFor="format"
@@ -104,7 +138,7 @@ export function FileList() {
             <Select
               value={outputFormat}
               onValueChange={(val) => setOutputFormat(val as OutputFormat)}
-              disabled={isProcessing || isAllDone} // Bloquear si ya terminó
+              disabled={isProcessing || isAllDone}
             >
               <SelectTrigger
                 id="format"
@@ -121,7 +155,7 @@ export function FileList() {
             </Select>
           </div>
 
-          {/* BOTÓN DE ACCIÓN */}
+          {/* BOTÓN START */}
           <div className="w-full sm:w-auto">
             {isAllDone ? (
               <Button

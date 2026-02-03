@@ -35,7 +35,8 @@ async function forceFormatConversion(
         (blob) => {
           URL.revokeObjectURL(url);
           if (blob) {
-            resolve(blob);
+            const forcedBlob = new Blob([blob], { type: targetFormat });
+            resolve(forcedBlob);
           } else {
             reject(new Error("Falló la conversión de formato"));
           }
@@ -57,28 +58,40 @@ async function forceFormatConversion(
 export async function compressImage(
   file: File,
   format: OutputFormat = "original",
+  maxWidth: number = 0, // 0 significa "Automático / Web Optimization"
 ): Promise<Blob> {
+  // LOGICA HÍBRIDA:
+  let targetMaxWidth: number;
+  let targetMaxSizeMB: number;
+
+  if (maxWidth === 0) {
+    // MODO AUTOMÁTICO (El que quieres por defecto)
+    // Reducimos a estándar web (Full HD) y forzamos compresión agresiva (1MB)
+    targetMaxWidth = 1920;
+    targetMaxSizeMB = 1;
+  } else {
+    // MODO MANUAL (El usuario ha puesto un número)
+    // Respetamos su tamaño exacto y subimos el límite de peso para que quepa
+    targetMaxWidth = maxWidth;
+    targetMaxSizeMB = 50;
+  }
+
   const options = {
-    maxSizeMB: 1,
-    maxWidthOrHeight: 1920,
+    maxSizeMB: targetMaxSizeMB,
+    maxWidthOrHeight: targetMaxWidth,
     useWebWorker: true,
     initialQuality: 0.8,
     fileType: format === "original" ? undefined : format,
   };
 
   try {
-    // CORRECCIÓN AQUÍ:
-    // Tipamos la variable como 'Blob' (el tipo genérico).
-    // Un 'File' es un 'Blob', así que acepta ambos sin quejarse.
     let compressedBlob: Blob = await imageCompression(file, options);
 
-    // Si pedimos un formato específico y la librería nos ignoró (ej: pidió webp y devolvió png)
+    // Lógica de formatos
     if (format !== "original" && compressedBlob.type !== format) {
       console.log(
         `Forzando conversión de ${compressedBlob.type} a ${format}...`,
       );
-
-      // Ahora sí podemos asignar el resultado del Canvas (Blob) a esta variable
       compressedBlob = await forceFormatConversion(compressedBlob, format);
     }
 
