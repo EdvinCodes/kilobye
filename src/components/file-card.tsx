@@ -8,12 +8,14 @@ import { Button } from "@/components/ui/button";
 import { downloadBlob } from "@/lib/download-utils";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
+import { useRetroSound } from "@/hooks/use-retro-sound";
 
 interface FileCardProps {
   fileData: ImageFile;
 }
 
 export function FileCard({ fileData }: FileCardProps) {
+  const { playDelete } = useRetroSound();
   const removeFile = useFileStore((state) => state.removeFile);
 
   const handleDownload = () => {
@@ -42,27 +44,35 @@ export function FileCard({ fileData }: FileCardProps) {
           {fileData.file.name}
         </span>
         <button
-          onClick={() => removeFile(fileData.id)}
+          onClick={() => {
+            playDelete();
+            removeFile(fileData.id);
+          }}
           className="hover:text-red-500"
         >
           <X className="h-3 w-3" />
         </button>
       </div>
 
-      {/* 2. La Imagen (Pixelada) */}
-      <div className="relative aspect-square w-full bg-muted border-b-2 border-foreground">
+      {/* 2. La Imagen (RESPONSIVE FIX) */}
+      {/* CAMBIO AQUI:
+          - h-48: Altura fija en móvil (rectangular, ocupa menos espacio).
+          - sm:h-auto sm:aspect-square: En pantallas grandes vuelve a ser cuadrado automático.
+      */}
+      <div className="relative w-full bg-muted border-b-2 border-foreground h-48 sm:h-auto sm:aspect-square">
         <Image
           src={fileData.preview}
           alt={fileData.file.name}
-          width={400}
-          height={400}
+          // Usamos 'fill' para que la imagen se adapte perfectamente al contenedor padre (sea rectangular o cuadrado)
+          fill
+          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
           unoptimized
-          className="h-full w-full object-cover rendering-pixelated" // rendering-pixelated fuerza el look retro
+          className="object-cover rendering-pixelated" // rendering-pixelated fuerza el look retro
         />
 
         {/* Overlay de estado */}
         {fileData.status === "done" && (
-          <div className="absolute inset-0 bg-green-500/20 flex items-center justify-center backdrop-blur-[1px]">
+          <div className="absolute inset-0 bg-green-500/20 flex items-center justify-center backdrop-blur-[1px] z-10">
             <div className="bg-green-500 text-black font-bold font-mono px-3 py-1 border-2 border-black shadow-[2px_2px_0px_0px_black] rotate-[-10deg]">
               SAVED!
             </div>

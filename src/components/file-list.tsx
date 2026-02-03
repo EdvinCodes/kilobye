@@ -8,8 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Zap, Archive } from "lucide-react";
 import { compressImage } from "@/lib/compression";
 import { downloadAllAsZip } from "@/lib/download-utils";
+import { useRetroSound } from "@/hooks/use-retro-sound";
 
 export function FileList() {
+  const { playSuccess, playClick } = useRetroSound();
   const { files, updateFile } = useFileStore();
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -20,6 +22,7 @@ export function FileList() {
   // Lógica de Compresión
   const handleCompressAll = async () => {
     setIsProcessing(true);
+    playClick();
 
     // Filtramos solo las que faltan por comprimir
     const pendingFiles = files.filter((f) => f.status !== "done");
@@ -47,6 +50,7 @@ export function FileList() {
       }),
     );
 
+    playSuccess();
     setIsProcessing(false);
   };
 
@@ -113,7 +117,12 @@ export function FileList() {
       {/* Grid de Tarjetas */}
       <motion.div
         layout
-        className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
+        // FIX RESPONSIVE:
+        // grid-cols-1 (Móvil vertical) -> 1 columna grande
+        // sm:grid-cols-2 (Móvil grande/Tablet) -> 2 columnas
+        // md:grid-cols-3 (Laptop) -> 3 columnas
+        // lg:grid-cols-4 (Desktop) -> 4 columnas
+        className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
       >
         <AnimatePresence mode="popLayout">
           {files.map((file) => (

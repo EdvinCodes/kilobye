@@ -7,12 +7,15 @@ import { UploadCloud, Gamepad2 } from "lucide-react";
 import { useFileStore, ImageFile } from "@/store/file-store";
 import { v4 as uuidv4 } from "uuid";
 import { cn } from "@/lib/utils";
+import { useRetroSound } from "@/hooks/use-retro-sound";
 
 export function UploadDropzone() {
   const addFiles = useFileStore((state) => state.addFiles);
+  const { playDrop, playClick } = useRetroSound();
 
   const onDrop = useCallback(
     (acceptedFiles: File[]) => {
+      playDrop();
       const newFiles: ImageFile[] = acceptedFiles.map((file) => ({
         id: uuidv4(),
         file,
@@ -22,7 +25,7 @@ export function UploadDropzone() {
       }));
       addFiles(newFiles);
     },
-    [addFiles],
+    [addFiles, playDrop],
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -36,6 +39,7 @@ export function UploadDropzone() {
     // dejando solo un margen mínimo de seguridad para las esquinas redondeadas.
     <div className="w-full h-full p-2 md:p-3">
       <motion.div
+        onClick={() => playClick()}
         {...(getRootProps() as unknown as HTMLMotionProps<"div">)}
         whileHover={{ scale: 1.005, translateY: -1 }} // Efecto más sutil para no salir del contenedor
         whileTap={{ scale: 0.995, translateY: 1 }}
