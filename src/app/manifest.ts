@@ -2,24 +2,27 @@ import { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "KiloBye - Compresor Arcade",
+    name: "KiloBye",
     short_name: "KiloBye",
-    description: "Compresión de imágenes extrema, privada y sin conexión.",
+    description: "Pixel Perfect Compression. Retro style.",
     start_url: "/",
-    display: "standalone", // Esto hace que se abra sin barra de navegador (como una app real)
-    background_color: "#09090b", // Tu color de fondo dark
-    theme_color: "#7c3aed", // Tu color primary (morado)
-    orientation: "portrait",
+    display: "standalone",
+    background_color: "#000000",
+    theme_color: "#7c3aed",
     icons: [
       {
-        src: "/web-app-manifest-192x192.png", // Nota: Necesitaremos generar estos iconos luego para que quede perfecto, pero por ahora definimos la estructura
+        src: "/icon-192.png",
         sizes: "192x192",
         type: "image/png",
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        purpose: "any maskable" as any,
       },
       {
-        src: "/web-app-manifest-512x512.png",
+        src: "/icon-512.png",
         sizes: "512x512",
         type: "image/png",
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        purpose: "any maskable" as any,
       },
     ],
   };
