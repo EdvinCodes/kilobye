@@ -68,12 +68,12 @@ export default function Home() {
       <main className="flex-1 flex flex-col items-center justify-start pt-12 md:pt-24 px-4 pb-10 md:pb-20 w-full">
         {/* 3. HERO SECTION (Tipografía responsive: 4xl en móvil -> 8xl en PC) */}
         <div className="text-center space-y-6 md:space-y-8 mb-10 md:mb-16 max-w-4xl animate-in fade-in slide-in-from-bottom-4 duration-700">
-          <h1 className="text-4xl sm:text-6xl md:text-8xl font-black tracking-tighter text-foreground leading-[0.9]">
-            Make it{" "}
-            <span className="bg-gradient-to-r from-primary to-violet-500 bg-clip-text text-transparent decoration-clone">
-              Smol.
-            </span>
+          <h1 className="retro-text text-5xl md:text-8xl font-black tracking-widest text-foreground leading-none mb-4 drop-shadow-[4px_4px_0_rgba(255,0,0,0.5)]">
+            KILO<span className="text-primary">BYE</span>
           </h1>
+          <p className="font-mono text-sm md:text-xl text-muted-foreground max-w-2xl mx-auto">
+            &gt; PRESS START TO COMPRESS_
+          </p>
 
           <p className="text-lg md:text-2xl text-muted-foreground max-w-xs sm:max-w-2xl mx-auto leading-relaxed font-light">
             Compresión extrema en tu navegador.

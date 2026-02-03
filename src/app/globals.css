@@ -44,6 +44,14 @@
   --radius-2xl: calc(var(--radius) + 8px);
   --radius-3xl: calc(var(--radius) + 12px);
   --radius-4xl: calc(var(--radius) + 16px);
+
+  /* AÑADIMOS LA FUENTE PIXEL AL TEMA */
+  --font-pixel: var(--font-pixel);
+
+  /* SOMBRAS DURAS (NEO-RETRO) */
+  --shadow-retro: 4px 4px 0px 0px var(--primary);
+  --shadow-retro-hover: 6px 6px 0px 0px var(--primary);
+  --shadow-card: 4px 4px 0px 0px var(--border);
 }
 
 :root {
@@ -119,18 +127,18 @@
   * {
     @apply border-border outline-ring/50;
   }
-  body {
-    @apply bg-background text-foreground;
-  }
-}
-
-@layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
 
   html {
     scroll-behavior: smooth;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  .retro-text {
+    font-family: var(--font-pixel), monospace;
+    text-transform: uppercase; /* El pixel art suele ser mayúsculas */
   }
 
   body {
@@ -171,4 +179,31 @@
   background-image:
     linear-gradient(to right, var(--color-border) 1px, transparent 1px),
     linear-gradient(to bottom, var(--color-border) 1px, transparent 1px);
+}
+
+/* UTILIDADES PROPIAS */
+@layer utilities {
+  .pixel-border {
+    @apply border-2 border-foreground;
+  }
+
+  .pixel-shadow {
+    box-shadow: 4px 4px 0px 0px currentColor;
+  }
+
+  .pixel-shadow-sm {
+    box-shadow: 2px 2px 0px 0px currentColor;
+  }
+
+  /* Efecto CRT Scanlines (opcional, para la dropzone) */
+  .scanlines {
+    background: linear-gradient(
+      to bottom,
+      rgba(255, 255, 255, 0),
+      rgba(255, 255, 255, 0) 50%,
+      rgba(0, 0, 0, 0.1) 50%,
+      rgba(0, 0, 0, 0.1)
+    );
+    background-size: 100% 4px;
+  }
 }

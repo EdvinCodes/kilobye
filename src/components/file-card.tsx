@@ -1,13 +1,13 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { X, CheckCircle2, Loader2, Download } from "lucide-react";
+import { X, Download } from "lucide-react";
 import { ImageFile, useFileStore } from "@/store/file-store";
 import { formatBytes } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { downloadBlob } from "@/lib/download-utils";
 import Image from "next/image";
+import { cn } from "@/lib/utils";
 
 interface FileCardProps {
   fileData: ImageFile;
@@ -16,7 +16,6 @@ interface FileCardProps {
 export function FileCard({ fileData }: FileCardProps) {
   const removeFile = useFileStore((state) => state.removeFile);
 
-  // Función para descargar solo este archivo
   const handleDownload = () => {
     if (fileData.compressedFile) {
       downloadBlob(fileData.compressedFile, fileData.file.name);
@@ -26,115 +25,78 @@ export function FileCard({ fileData }: FileCardProps) {
   return (
     <motion.div
       layout
-      initial={{ opacity: 0, scale: 0.9 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
-      className="relative group overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm transition-shadow hover:shadow-md"
+      initial={{ opacity: 0, scale: 0.9, y: 20 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.5, transition: { duration: 0.2 } }}
+      className={cn(
+        "relative group overflow-hidden bg-card text-card-foreground",
+        "border-2 border-foreground", // Borde negro fino
+        "shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_#ffffff]", // Sombra dura adaptativa
+        "hover:translate-y-[-2px] hover:translate-x-[-2px] hover:shadow-[6px_6px_0px_0px_var(--color-primary)]",
+        "transition-all duration-200",
+      )}
     >
-      {/* 1. La Imagen de fondo / Preview */}
-      <div className="relative aspect-square w-full overflow-hidden bg-muted/50">
+      {/* 1. Header estilo "Ventana Windows 95" o Barra de Vida */}
+      <div className="h-6 bg-foreground text-background flex items-center justify-between px-2 py-0.5 select-none">
+        <span className="text-[10px] font-bold font-mono truncate max-w-[80%] uppercase">
+          {fileData.file.name}
+        </span>
+        <button
+          onClick={() => removeFile(fileData.id)}
+          className="hover:text-red-500"
+        >
+          <X className="h-3 w-3" />
+        </button>
+      </div>
+
+      {/* 2. La Imagen (Pixelada) */}
+      <div className="relative aspect-square w-full bg-muted border-b-2 border-foreground">
         <Image
           src={fileData.preview}
           alt={fileData.file.name}
-          width={500}
-          height={500}
-          unoptimized // IMPORTANTE: Vital para blobs locales
-          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+          width={400}
+          height={400}
+          unoptimized
+          className="h-full w-full object-cover rendering-pixelated" // rendering-pixelated fuerza el look retro
         />
 
-        {/* Capa oscura (Overlay) al pasar el ratón */}
-        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-
-        {/* BOTONES DE ACCIÓN FLOTANTES */}
-        <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-          {/* Botón Descargar (Solo si está listo) */}
-          {fileData.status === "done" && (
-            <Button
-              variant="secondary"
-              size="icon"
-              className="h-8 w-8 rounded-full shadow-sm bg-white/90 hover:bg-white text-green-600 hover:text-green-700"
-              onClick={handleDownload}
-              title="Descargar imagen"
-            >
-              <Download className="h-4 w-4" />
-            </Button>
-          )}
-
-          {/* Botón Borrar */}
-          <Button
-            variant="destructive"
-            size="icon"
-            className="h-8 w-8 rounded-full shadow-sm"
-            onClick={() => removeFile(fileData.id)}
-            title="Eliminar"
-          >
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
+        {/* Overlay de estado */}
+        {fileData.status === "done" && (
+          <div className="absolute inset-0 bg-green-500/20 flex items-center justify-center backdrop-blur-[1px]">
+            <div className="bg-green-500 text-black font-bold font-mono px-3 py-1 border-2 border-black shadow-[2px_2px_0px_0px_black] rotate-[-10deg]">
+              SAVED!
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* 2. Información del archivo */}
-      <div className="p-4 space-y-2">
-        <div className="flex items-start justify-between gap-2">
-          <p
-            className="font-medium truncate text-sm w-full"
-            title={fileData.file.name}
-          >
-            {fileData.file.name}
-          </p>
+      {/* 3. Stats estilo RPG */}
+      <div className="p-3 space-y-2 font-mono text-xs">
+        <div className="flex justify-between items-center border-b border-dashed border-foreground/30 pb-2">
+          <span className="text-muted-foreground">SIZE:</span>
+          <span>{formatBytes(fileData.originalSize)}</span>
         </div>
 
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          {/* Lógica de visualización de peso */}
-          <div className="flex flex-col">
-            <span
-              className={
-                fileData.compressedSize ? "line-through opacity-50" : ""
-              }
-            >
-              {formatBytes(fileData.originalSize)}
+        <div className="flex justify-between items-center">
+          <span className="text-muted-foreground">NEW:</span>
+          {fileData.compressedSize ? (
+            <span className="text-green-600 font-bold">
+              {formatBytes(fileData.compressedSize)}
             </span>
-            {fileData.compressedSize && (
-              <span className="font-bold text-green-600 dark:text-green-400">
-                {formatBytes(fileData.compressedSize)}
-              </span>
-            )}
-          </div>
-
-          {/* Badges de Estado */}
-          {fileData.status === "idle" && (
-            <Badge
-              variant="secondary"
-              className="text-[10px] h-5 pointer-events-none"
-            >
-              Pendiente
-            </Badge>
-          )}
-
-          {fileData.status === "compressing" && (
-            <Badge
-              variant="default"
-              className="text-[10px] h-5 bg-blue-500 pointer-events-none"
-            >
-              <Loader2 className="mr-1 h-3 w-3 animate-spin" /> Procesando
-            </Badge>
-          )}
-
-          {fileData.status === "done" && fileData.compressedSize && (
-            <Badge
-              variant="default"
-              className="text-[10px] h-5 bg-green-500 hover:bg-green-600 pointer-events-none"
-            >
-              <CheckCircle2 className="mr-1 h-3 w-3" />-
-              {Math.round(
-                ((fileData.originalSize - fileData.compressedSize) /
-                  fileData.originalSize) *
-                  100,
-              )}
-              %
-            </Badge>
+          ) : (
+            <span>???</span>
           )}
         </div>
+
+        {/* Botón de acción grande */}
+        {fileData.status === "done" && (
+          <Button
+            onClick={handleDownload}
+            className="w-full mt-2 h-8 text-[10px] font-bold border-2 border-foreground bg-primary text-primary-foreground hover:bg-primary/90 shadow-[2px_2px_0px_0px_black] active:shadow-none active:translate-x-[2px] active:translate-y-[2px]"
+          >
+            GET LOOT <Download className="ml-2 h-3 w-3" />
+          </Button>
+        )}
       </div>
     </motion.div>
   );

@@ -1,7 +1,15 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+// 1. IMPORTAMOS LA FUENTE PIXELADA
+import { VT323, Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
+
+// Configuración de la fuente Pixel
+const pixelFont = VT323({
+  weight: "400",
+  subsets: ["latin"],
+  variable: "--font-pixel", // Variable CSS para usarla en Tailwind
+});
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -14,11 +22,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "KiloBye - Comprime sin perder calidad",
-  description: "La herramienta de compresión de imágenes más rápida y privada.",
-  icons: {
-    icon: "/favicon.ico", // Asegúrate de tener un icono
-  },
+  title: "KiloBye - Pixel Perfect Compression",
+  description: "Make it smol. Retro style.",
 };
 
 export default function RootLayout({
@@ -29,20 +34,17 @@ export default function RootLayout({
   return (
     <html lang="es" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased relative min-h-screen selection:bg-primary/10`}
+        // 2. AÑADIMOS LA VARIABLE DE LA FUENTE AQUI
+        className={`${pixelFont.variable} ${geistSans.variable} ${geistMono.variable} antialiased font-sans selection:bg-primary selection:text-primary-foreground`}
       >
         <ThemeProvider
           attribute="class"
-          defaultTheme="dark" // Forzamos dark por defecto si quieres ese look "hacker"
+          defaultTheme="dark" // El pixel art queda mejor en oscuro
           enableSystem
           disableTransitionOnChange
         >
-          {/* --- FONDO "SENIOR" --- */}
-          {/* 1. Grilla sutil de fondo */}
-          <div className="fixed inset-0 -z-10 h-full w-full bg-background bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-[size:14px_24px]">
-            {/* 2. Luz/Gradiente central para dar foco */}
-            <div className="absolute left-0 right-0 top-0 -z-10 m-auto h-[310px] w-[310px] rounded-full bg-primary/20 opacity-20 blur-[100px]"></div>
-          </div>
+          {/* Fondo Retro: Una cuadrícula más marcada */}
+          <div className="fixed inset-0 -z-10 h-full w-full bg-background bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]"></div>
 
           {children}
         </ThemeProvider>
