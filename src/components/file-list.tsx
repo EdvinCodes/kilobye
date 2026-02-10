@@ -5,12 +5,13 @@ import { useFileStore } from "@/store/file-store";
 import { FileCard } from "./file-card";
 import { AnimatePresence, motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Zap, Archive, Settings2 } from "lucide-react";
+import { Zap, Archive, Settings2, Cpu } from "lucide-react";
 import { compressImage, type OutputFormat } from "@/lib/compression";
 import { downloadAllAsZip } from "@/lib/download-utils";
 import { triggerPixelConfetti } from "@/lib/confetti";
 import { useRetroSound } from "@/hooks/use-retro-sound";
 import { useFFmpeg, type VideoSettings } from "@/hooks/use-ffmpeg";
+import { cn } from "@/lib/utils";
 
 import {
   Select,
@@ -119,55 +120,93 @@ export function FileList() {
   const totalSaved = totalOriginal - totalCompressed;
 
   return (
-    <div className="w-full max-w-5xl mx-auto mt-12 space-y-8 pb-24 px-4">
-      {/* PANEL DE CONTROL */}
-      <div className="flex flex-col lg:flex-row items-end lg:items-center justify-between gap-6 p-4 border-2 border-border bg-card/50 rounded-xl shadow-sm">
-        <div className="flex flex-col gap-1 w-full lg:w-auto">
-          <h2 className="text-2xl font-bold tracking-tight retro-text flex items-center gap-2">
-            <Settings2 className="w-6 h-6" /> CONTROL PANEL
-          </h2>
-          <p className="text-muted-foreground text-xs font-mono">
-            {files.length} ITEMS LOADED [{mode.toUpperCase()} MODE]
-          </p>
+    <div className="w-full max-w-6xl mx-auto mt-12 space-y-8 pb-24 px-4">
+      {/* --- DASHBOARD CONTROL PANEL --- */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className={cn(
+          "flex flex-col xl:flex-row items-end xl:items-center justify-between gap-6 p-6 rounded-2xl shadow-xl backdrop-blur-md",
+          "border-2",
+          mode === "image"
+            ? "bg-card/40 border-primary/20 shadow-primary/5"
+            : "bg-violet-950/10 border-violet-500/20 shadow-violet-500/5",
+        )}
+      >
+        {/* IZQUIERDA: TITULO Y ESTADO */}
+        <div className="flex flex-col gap-2 w-full xl:w-auto">
+          <div className="flex items-center gap-3">
+            <div
+              className={cn(
+                "p-2 rounded-lg border",
+                mode === "image"
+                  ? "bg-primary/10 border-primary/30 text-primary"
+                  : "bg-violet-500/10 border-violet-500/30 text-violet-400",
+              )}
+            >
+              <Settings2 className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold tracking-tight retro-text flex items-center gap-2">
+                OPERATION_CENTER
+              </h2>
+              <div className="flex items-center gap-2 text-[10px] font-mono text-muted-foreground">
+                <span className="flex items-center gap-1">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                  </span>
+                  SYSTEM_ONLINE
+                </span>
+                <span>|</span>
+                <span>{files.length} ASSETS LOADED</span>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row flex-wrap gap-4 w-full lg:w-auto items-center justify-end">
+        {/* DERECHA: CONTROLES */}
+        <div className="flex flex-col sm:flex-row flex-wrap gap-4 w-full xl:w-auto items-center justify-end">
           {/* --- CONTROLES MODO IMAGEN --- */}
           {mode === "image" && (
-            <>
-              <div className="flex items-center gap-2 w-full sm:w-auto">
+            <div className="flex flex-wrap gap-4 items-center bg-background/50 p-2 rounded-xl border border-border/50">
+              <div className="flex items-center gap-2">
                 <Label
                   htmlFor="width"
-                  className="font-mono text-xs whitespace-nowrap"
+                  className="font-mono text-[10px] text-muted-foreground uppercase px-2"
                 >
-                  WIDTH:
+                  Max Width
                 </Label>
-                <div className="relative w-full sm:w-auto">
+                <div className="relative">
+                  {/* ANCHO AUMENTADO A 140px */}
                   <Input
                     id="width"
                     type="number"
                     value={maxWidth === 0 ? "" : maxWidth}
-                    placeholder="Auto"
+                    placeholder="Auto (1920)"
                     onChange={(e) => setMaxWidth(Number(e.target.value))}
                     disabled={isProcessing || isAllDone}
-                    className="w-full sm:w-[100px] h-9 font-mono text-xs border-2 border-primary/20"
+                    className="w-[140px] h-8 font-mono text-xs border-primary/20 bg-background/50 focus:border-primary/50 transition-colors"
                   />
-                  <span className="absolute right-3 top-2.5 text-[10px] text-muted-foreground font-mono pointer-events-none">
+                  <span className="absolute right-3 top-2 text-[9px] text-muted-foreground font-mono pointer-events-none">
                     px
                   </span>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 w-full sm:w-auto">
-                <Label className="font-mono text-xs whitespace-nowrap">
-                  FMT:
+              <div className="w-px h-6 bg-border/50 hidden sm:block" />
+
+              <div className="flex items-center gap-2">
+                <Label className="font-mono text-[10px] text-muted-foreground uppercase px-2">
+                  Format
                 </Label>
+                {/* ANCHO AUMENTADO A 140px */}
                 <Select
                   value={outputFormat}
                   onValueChange={(v) => setOutputFormat(v as OutputFormat)}
                   disabled={isProcessing || isAllDone}
                 >
-                  <SelectTrigger className="w-full sm:w-[120px] h-9 font-mono text-xs border-2 border-primary/20">
+                  <SelectTrigger className="w-[140px] h-8 font-mono text-xs border-primary/20 bg-background/50 focus:border-primary/50">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -175,20 +214,27 @@ export function FileList() {
                     <SelectItem value="image/jpeg">JPG</SelectItem>
                     <SelectItem value="image/png">PNG</SelectItem>
                     <SelectItem value="image/webp">WEBP</SelectItem>
+                    <SelectItem
+                      value="image/avif"
+                      className="font-bold text-violet-500"
+                    >
+                      AVIF (Ultra)
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-            </>
+            </div>
           )}
 
           {/* --- CONTROLES MODO VIDEO --- */}
           {mode === "video" && (
-            <>
+            <div className="flex flex-wrap gap-3 items-center bg-violet-500/5 p-2 rounded-xl border border-violet-500/20">
               {/* Resolución */}
-              <div className="flex items-center gap-2 w-full sm:w-auto">
-                <Label className="font-mono text-xs whitespace-nowrap">
-                  RES:
+              <div className="flex flex-col gap-1">
+                <Label className="font-mono text-[9px] text-violet-400/70 uppercase ml-1">
+                  Resolution
                 </Label>
+                {/* ANCHO AUMENTADO A 130px */}
                 <Select
                   value={videoSettings.resolution}
                   onValueChange={(v) =>
@@ -199,7 +245,7 @@ export function FileList() {
                   }
                   disabled={isProcessing || isAllDone}
                 >
-                  <SelectTrigger className="w-full sm:w-[120px] h-9 font-mono text-xs border-2 border-violet-500/20 text-violet-600">
+                  <SelectTrigger className="w-[130px] h-8 font-mono text-xs border-violet-500/30 text-violet-300 bg-violet-950/20">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -212,10 +258,11 @@ export function FileList() {
               </div>
 
               {/* FPS */}
-              <div className="flex items-center gap-2 w-full sm:w-auto">
-                <Label className="font-mono text-xs whitespace-nowrap">
-                  FPS:
+              <div className="flex flex-col gap-1">
+                <Label className="font-mono text-[9px] text-violet-400/70 uppercase ml-1">
+                  FPS
                 </Label>
+                {/* ANCHO AUMENTADO A 110px */}
                 <Select
                   value={videoSettings.fps}
                   onValueChange={(v) =>
@@ -226,22 +273,23 @@ export function FileList() {
                   }
                   disabled={isProcessing || isAllDone}
                 >
-                  <SelectTrigger className="w-full sm:w-[90px] h-9 font-mono text-xs border-2 border-violet-500/20 text-violet-600">
+                  <SelectTrigger className="w-[110px] h-8 font-mono text-xs border-violet-500/30 text-violet-300 bg-violet-950/20">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="original">Orig</SelectItem>
-                    <SelectItem value="60">60</SelectItem>
-                    <SelectItem value="30">30</SelectItem>
+                    <SelectItem value="60">60 FPS</SelectItem>
+                    <SelectItem value="30">30 FPS</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               {/* Calidad */}
-              <div className="flex items-center gap-2 w-full sm:w-auto">
-                <Label className="font-mono text-xs whitespace-nowrap">
-                  QUAL:
+              <div className="flex flex-col gap-1">
+                <Label className="font-mono text-[9px] text-violet-400/70 uppercase ml-1">
+                  Quality
                 </Label>
+                {/* ANCHO AUMENTADO A 120px */}
                 <Select
                   value={videoSettings.quality}
                   onValueChange={(v) =>
@@ -252,29 +300,30 @@ export function FileList() {
                   }
                   disabled={isProcessing || isAllDone}
                 >
-                  <SelectTrigger className="w-full sm:w-[100px] h-9 font-mono text-xs border-2 border-violet-500/20 text-violet-600">
+                  <SelectTrigger className="w-[120px] h-8 font-mono text-xs border-violet-500/30 text-violet-300 bg-violet-950/20">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="high">High</SelectItem>
-                    <SelectItem value="medium">Med</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
                     <SelectItem value="low">Low</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-            </>
+            </div>
           )}
 
           {/* BOTÓN START */}
-          <div className="w-full sm:w-auto">
+          <div className="w-full sm:w-auto pl-2">
             {isAllDone ? (
               <Button
                 size="lg"
                 onClick={handleDownloadZip}
-                className="w-full sm:w-auto rounded-full gap-2 shadow-lg bg-primary hover:bg-primary/90 animate-in zoom-in duration-300"
+                className="w-full sm:w-auto h-12 rounded-full gap-2 shadow-[0_0_20px_-5px_var(--color-primary)] bg-primary hover:bg-primary/90 animate-in zoom-in duration-300 border-2 border-white/20"
               >
-                <Archive className="w-4 h-4" /> ZIP
-                <span className="bg-primary-foreground/20 px-2 py-0.5 rounded text-xs ml-1">
+                <Archive className="w-5 h-5" />
+                <span className="font-bold tracking-wide">DOWNLOAD PACK</span>
+                <span className="bg-white/20 px-2 py-0.5 rounded text-[10px] ml-1 font-mono">
                   -{Math.round((totalSaved / totalOriginal) * 100)}%
                 </span>
               </Button>
@@ -283,25 +332,45 @@ export function FileList() {
                 size="lg"
                 onClick={handleCompressAll}
                 disabled={isProcessing || !hasPending}
-                className="w-full sm:w-auto rounded-full gap-2 shadow-lg shadow-primary/20 whitespace-nowrap"
+                className={cn(
+                  "w-full sm:w-auto h-12 rounded-full gap-3 shadow-lg whitespace-nowrap transition-all duration-300 border-2 border-white/10",
+                  isProcessing
+                    ? "bg-muted cursor-not-allowed opacity-80"
+                    : "hover:scale-105 active:scale-95",
+                )}
               >
                 {isProcessing ? (
-                  <>WORKING...</>
+                  <>
+                    <Cpu className="w-5 h-5 animate-spin" />
+                    <span className="animate-pulse font-mono">
+                      PROCESSING...
+                    </span>
+                  </>
                 ) : (
                   <>
-                    <Zap className="w-4 h-4 fill-current" /> START
+                    <Zap
+                      className={cn(
+                        "w-5 h-5 fill-current",
+                        mode === "video"
+                          ? "text-violet-200"
+                          : "text-yellow-200",
+                      )}
+                    />
+                    <span className="font-black tracking-widest text-base">
+                      START ENGINE
+                    </span>
                   </>
                 )}
               </Button>
             )}
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* Grid de Tarjetas */}
       <motion.div
         layout
-        className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
+        className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-6"
       >
         <AnimatePresence mode="popLayout">
           {files.map((file) => (

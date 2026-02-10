@@ -32,14 +32,10 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://kilobye.vercel.app"),
 
   title: {
-    // ANTES: KiloBye - Pixel Perfect Compression (28 chars)
-    // AHORA: 56 chars (Perfecto para Google)
     default: "KiloBye: Compresor de Imágenes Extremo, Privado y Gratis",
     template: "%s | KiloBye",
   },
 
-  // ANTES: Compresión de imágenes extrema, privada y sin servidores. Estilo Retro. (89 chars)
-  // AHORA: 154 chars (Rico en keywords y beneficios)
   description:
     "Comprime imágenes JPG, PNG y WebP al instante sin perder calidad. Tecnología 100% privada: tus fotos nunca se suben a la nube. Rápido, gratis y estilo Pixel Art.",
 

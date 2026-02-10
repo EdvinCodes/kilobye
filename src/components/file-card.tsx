@@ -1,8 +1,8 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { X, Download, Play } from "lucide-react";
-import { MediaFile, useFileStore } from "@/store/file-store"; // MediaFile
+import { X, Download, Play, FileVideo, FileImage } from "lucide-react";
+import { MediaFile, useFileStore } from "@/store/file-store";
 import { Button } from "@/components/ui/button";
 import { downloadBlob } from "@/lib/download-utils";
 import Image from "next/image";
@@ -15,15 +15,12 @@ interface FileCardProps {
 
 export function FileCard({ fileData }: FileCardProps) {
   const { playDelete } = useRetroSound();
-  const { removeFile, mode } = useFileStore(); // Necesitamos el modo
+  const { removeFile, mode } = useFileStore();
 
   const handleDownload = () => {
     if (fileData.compressedFile) {
-      // Si es video, forzamos .mp4, si es imagen usamos la lógica de extensión
       let correctName = fileData.file.name;
-
       if (mode === "video") {
-        // Cambiar extensión a .mp4
         const parts = fileData.file.name.split(".");
         parts.pop();
         correctName = parts.join(".") + ".mp4";
@@ -33,7 +30,6 @@ export function FileCard({ fileData }: FileCardProps) {
           fileData.compressedFile,
         );
       }
-
       downloadBlob(fileData.compressedFile, correctName);
     }
   };
@@ -41,52 +37,71 @@ export function FileCard({ fileData }: FileCardProps) {
   return (
     <motion.div
       layout
+      whileHover={{ y: -5, transition: { duration: 0.2 } }}
       initial={{ opacity: 0, scale: 0.9, y: 20 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.5, transition: { duration: 0.2 } }}
       className={cn(
-        "relative group overflow-hidden bg-card text-card-foreground",
-        "border-2 border-foreground",
-        "shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_#ffffff]",
-        "hover:translate-y-[-2px] hover:translate-x-[-2px] hover:shadow-[6px_6px_0px_0px_var(--color-primary)]",
-        "transition-all duration-200",
+        "relative group overflow-hidden bg-card text-card-foreground rounded-xl",
+        "border-[1px] border-border/60",
+        // SOMBRA AMBIENTAL SUAVE
+        "shadow-lg hover:shadow-2xl transition-all duration-300",
+        // BORDE DE COLOR SEGÚN MODO AL HOVER
+        mode === "image"
+          ? "hover:border-primary/50 hover:shadow-[0_10px_40px_-15px_rgba(255,100,0,0.3)]"
+          : "hover:border-violet-500/50 hover:shadow-[0_10px_40px_-15px_rgba(139,92,246,0.3)]",
       )}
     >
-      {/* Header */}
-      <div className="h-6 bg-foreground text-background flex items-center justify-between px-2 py-0.5 select-none">
-        <span className="text-[10px] font-bold font-mono truncate max-w-[80%] uppercase">
-          {fileData.file.name}
-        </span>
+      {/* --- HEADER --- */}
+      <div className="h-9 bg-muted/50 border-b border-border/40 flex items-center justify-between px-3 select-none">
+        <div className="flex items-center gap-2 max-w-[85%]">
+          {mode === "image" ? (
+            <FileImage className="w-3 h-3 text-muted-foreground" />
+          ) : (
+            <FileVideo className="w-3 h-3 text-violet-400" />
+          )}
+          <span className="text-[10px] font-bold font-mono truncate uppercase tracking-tight text-foreground/80">
+            {fileData.file.name}
+          </span>
+        </div>
         <button
           onClick={() => {
             playDelete();
             removeFile(fileData.id);
           }}
-          className="hover:text-red-500"
+          className="text-muted-foreground hover:text-red-500 hover:bg-red-500/10 p-1 rounded-md transition-colors"
         >
           <X className="h-3 w-3" />
         </button>
       </div>
 
-      {/* Media Preview */}
-      <div className="relative w-full bg-muted border-b-2 border-foreground h-48 sm:h-auto sm:aspect-square group-hover:bg-black transition-colors">
-        {/* Barra de Progreso (Solo Videos) */}
+      {/* --- PREVIEW AREA --- */}
+      <div className="relative w-full h-48 sm:h-auto sm:aspect-square bg-black/5 dark:bg-black/40 overflow-hidden">
+        {/* EFECTO CRT SCANLINES (Overlay decorativo) */}
+        <div
+          className="absolute inset-0 z-10 pointer-events-none opacity-[0.05] bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))]"
+          style={{ backgroundSize: "100% 2px, 3px 100%" }}
+        />
+
+        {/* LOADING BAR (VIDEO) */}
         {fileData.status === "compressing" &&
           fileData.progress !== undefined && (
-            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-              <div className="w-full h-4 bg-gray-800 border-2 border-white relative overflow-hidden">
+            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm p-6">
+              <div className="w-full h-2 bg-gray-800 rounded-full overflow-hidden mb-2 border border-white/10">
                 <motion.div
-                  className="h-full bg-green-500"
+                  className="h-full bg-gradient-to-r from-green-400 to-emerald-600"
                   initial={{ width: 0 }}
                   animate={{ width: `${fileData.progress}%` }}
                 />
               </div>
-              <p className="text-green-500 font-pixel mt-2 text-xs blink">
-                RENDERING... {fileData.progress}%
-              </p>
+              <div className="flex justify-between w-full text-[10px] font-mono text-green-400">
+                <span className="animate-pulse">PROCESSING_CHUNKS</span>
+                <span>{fileData.progress}%</span>
+              </div>
             </div>
           )}
 
+        {/* CONTENIDO REAL */}
         {mode === "image" ? (
           <Image
             src={fileData.preview}
@@ -94,59 +109,69 @@ export function FileCard({ fileData }: FileCardProps) {
             fill
             sizes="(max-width: 768px) 100vw, 33vw"
             unoptimized
-            className="object-cover rendering-pixelated"
+            className="object-cover transition-transform duration-500 group-hover:scale-110"
           />
         ) : (
           <>
             <video
               src={fileData.preview}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity"
               muted
               loop
               onMouseOver={(e) => e.currentTarget.play()}
               onMouseOut={(e) => e.currentTarget.pause()}
             />
-            {/* Icono Play overlay */}
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none group-hover:opacity-0 transition-opacity">
-              <Play className="w-10 h-10 text-white/80 fill-white/50" />
+              <div className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20">
+                <Play className="w-4 h-4 text-white fill-white" />
+              </div>
             </div>
           </>
         )}
 
-        {/* Overlay SAVED */}
+        {/* STAMP "SAVED" */}
         {fileData.status === "done" && (
-          <div className="absolute inset-0 bg-green-500/20 flex items-center justify-center backdrop-blur-[1px] z-10 pointer-events-none">
-            <div className="bg-green-500 text-black font-bold font-mono px-3 py-1 border-2 border-black shadow-[2px_2px_0px_0px_black] rotate-[-10deg]">
-              SAVED!
-            </div>
+          <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
+            <motion.div
+              initial={{ opacity: 0, scale: 2, rotate: -20 }}
+              animate={{ opacity: 1, scale: 1, rotate: -10 }}
+              className="border-[3px] border-green-500 text-green-500 font-black font-mono px-4 py-1 text-xl rounded-lg bg-green-950/40 backdrop-blur-sm shadow-[0_0_15px_-3px_rgba(34,197,94,0.6)]"
+            >
+              SAVED
+            </motion.div>
           </div>
         )}
       </div>
 
-      {/* Stats */}
-      <div className="p-3 space-y-2 font-mono text-xs">
-        <div className="flex justify-between items-center border-b border-dashed border-foreground/30 pb-2">
-          <span className="text-muted-foreground">SIZE:</span>
-          <span>{formatBytes(fileData.originalSize)}</span>
-        </div>
-
-        <div className="flex justify-between items-center">
-          <span className="text-muted-foreground">NEW:</span>
-          {fileData.compressedSize ? (
-            <span className="text-green-600 font-bold">
-              {formatBytes(fileData.compressedSize)}
+      {/* --- INFO FOOTER --- */}
+      <div className="p-3 bg-card space-y-3 font-mono text-[10px]">
+        {/* DATA GRID */}
+        <div className="grid grid-cols-2 gap-2 text-muted-foreground/80">
+          <div className="flex flex-col">
+            <span className="text-[9px] uppercase opacity-50">Original</span>
+            <span className="font-bold text-foreground">
+              {formatBytes(fileData.originalSize)}
             </span>
-          ) : (
-            <span>???</span>
-          )}
+          </div>
+          <div className="flex flex-col text-right">
+            <span className="text-[9px] uppercase opacity-50">Optimized</span>
+            {fileData.compressedSize ? (
+              <span className="font-bold text-green-500">
+                {formatBytes(fileData.compressedSize)}
+              </span>
+            ) : (
+              <span>---</span>
+            )}
+          </div>
         </div>
 
+        {/* BOTÓN DESCARGAR */}
         {fileData.status === "done" && (
           <Button
             onClick={handleDownload}
-            className="w-full mt-2 h-8 text-[10px] font-bold border-2 border-foreground bg-primary text-primary-foreground hover:bg-primary/90 shadow-[2px_2px_0px_0px_black] active:shadow-none active:translate-x-[2px] active:translate-y-[2px]"
+            className="w-full h-8 text-[10px] font-bold tracking-widest bg-foreground text-background hover:bg-primary hover:text-primary-foreground transition-all active:scale-95 shadow-md"
           >
-            GET LOOT <Download className="ml-2 h-3 w-3" />
+            <Download className="mr-2 h-3 w-3" /> GET FILE
           </Button>
         )}
       </div>

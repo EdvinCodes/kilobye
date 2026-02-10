@@ -25,8 +25,10 @@ export function getExtensionFromMimeType(mimeType: string): string {
       return ".png";
     case "image/webp":
       return ".webp";
+    case "image/avif": // <--- AÑADIDO
+      return ".avif";
     default:
-      return ""; // Si no lo conocemos, no tocamos nada
+      return "";
   }
 }
 
@@ -37,6 +39,5 @@ export function getCorrectFileName(originalName: string, blob: Blob): string {
   const dotIndex = originalName.lastIndexOf(".");
   if (dotIndex === -1) return originalName + newExtension;
 
-  // Quitamos la extensión vieja y pegamos la nueva
   return originalName.substring(0, dotIndex) + newExtension;
 }
