@@ -4,7 +4,7 @@ import { useCallback } from "react";
 import { useDropzone, type Accept } from "react-dropzone";
 import { motion, type HTMLMotionProps } from "framer-motion";
 import { UploadCloud, Image as ImageIcon, Film, Sparkles } from "lucide-react";
-import { useFileStore, MediaFile } from "@/store/file-store";
+import { useFileStore } from "@/store/file-store";
 import { v4 as uuidv4 } from "uuid";
 import { cn } from "@/lib/utils";
 import { useRetroSound } from "@/hooks/use-retro-sound";
@@ -14,18 +14,47 @@ export function UploadDropzone() {
   const { playDrop, playClick } = useRetroSound();
 
   const onDrop = useCallback(
-    (acceptedFiles: File[]) => {
+    async (acceptedFiles: File[]) => {
       if (acceptedFiles.length === 0) return;
 
       playDrop();
-      const newFiles: MediaFile[] = acceptedFiles.map((file) => ({
-        id: uuidv4(),
-        file,
-        preview: URL.createObjectURL(file),
-        status: "idle",
-        originalSize: file.size,
-      }));
-      addFiles(newFiles);
+
+      // Procesamos los archivos uno a uno para sacar metadatos
+      const processedFiles = await Promise.all(
+        acceptedFiles.map(async (file) => {
+          const id = uuidv4();
+          const preview = URL.createObjectURL(file);
+          let duration = 0;
+
+          // Si es video, sacamos la duración con un truco del DOM
+          if (file.type.startsWith("video/")) {
+            try {
+              duration = await new Promise<number>((resolve) => {
+                const video = document.createElement("video");
+                video.preload = "metadata";
+                video.onloadedmetadata = () => {
+                  resolve(video.duration);
+                };
+                video.onerror = () => resolve(0);
+                video.src = URL.createObjectURL(file); // Usamos un blob temporal
+              });
+            } catch (e) {
+              console.error("Error leyendo duración", e);
+            }
+          }
+
+          return {
+            id,
+            file,
+            preview,
+            status: "idle" as const,
+            originalSize: file.size,
+            duration, // <--- Guardamos el dato
+          };
+        }),
+      );
+
+      addFiles(processedFiles);
     },
     [addFiles, playDrop],
   );
@@ -37,7 +66,7 @@ export function UploadDropzone() {
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
-    maxFiles: mode === "video" ? 5 : 50, // Subimos límite de imágenes para que sea más "Pro"
+    maxFiles: mode === "video" ? 5 : 50,
     accept: acceptType,
   });
 
@@ -50,12 +79,10 @@ export function UploadDropzone() {
         whileTap={{ scale: 0.995 }}
         className={cn(
           "relative cursor-pointer group flex flex-col items-center justify-center text-center overflow-hidden",
-          // TAMAÑO PREMIUM: Más alto y espacioso
           "w-full min-h-[400px] lg:min-h-[500px] bg-background/80 backdrop-blur-sm",
-          "border-[6px] border-double border-foreground/20", // Borde doble estilo retro
-          "rounded-3xl", // Bordes más suaves
+          "border-[6px] border-double border-foreground/20",
+          "rounded-3xl",
           "transition-all duration-300 ease-out",
-          // EFECTO DRAG: Se ilumina todo
           isDragActive
             ? "border-primary bg-primary/5 shadow-[0_0_50px_-12px_var(--color-primary)] scale-[1.01]"
             : "hover:border-foreground/50 hover:shadow-xl",
@@ -79,13 +106,10 @@ export function UploadDropzone() {
           SYSTEM_READY
         </div>
         <div className="absolute top-4 right-6 font-mono text-[10px] text-muted-foreground/60">
-          VER. 2.0.1 // {mode.toUpperCase()}_MODULE
-        </div>
-        <div className="absolute bottom-4 left-6 font-mono text-[10px] text-muted-foreground/60">
-          MEM_FREE: 100%
+          VER. 2.1.0 // {mode.toUpperCase()}_MODULE
         </div>
 
-        {/* Esquinas Reforzadas (Estilo Gundam/UI) */}
+        {/* Esquinas Reforzadas */}
         <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-foreground transition-all group-hover:w-12 group-hover:h-12" />
         <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-foreground transition-all group-hover:w-12 group-hover:h-12" />
         <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-foreground transition-all group-hover:w-12 group-hover:h-12" />
@@ -93,7 +117,6 @@ export function UploadDropzone() {
 
         {/* --- CONTENIDO CENTRAL --- */}
         <div className="relative z-10 flex flex-col items-center gap-6 p-8 max-w-xl">
-          {/* Círculo central con Icono */}
           <div
             className={cn(
               "relative w-32 h-32 flex items-center justify-center rounded-full border-4 border-dashed transition-all duration-500",
@@ -102,7 +125,6 @@ export function UploadDropzone() {
                 : "border-muted-foreground/30 group-hover:border-primary/50",
             )}
           >
-            {/* Icono Flotante */}
             <div
               className={cn(
                 "transition-all duration-300",
@@ -120,7 +142,6 @@ export function UploadDropzone() {
               )}
             </div>
 
-            {/* Partículas decorativas si es hover */}
             {!isDragActive && (
               <Sparkles className="absolute -top-2 -right-2 w-6 h-6 text-yellow-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300 animate-spin-slow" />
             )}
@@ -142,54 +163,41 @@ export function UploadDropzone() {
                 : "Drag & drop files here or click to browse cache."}
             </p>
 
-            {/* Badges de Formato */}
             <div className="flex flex-wrap justify-center gap-2 mt-4">
               {mode === "image" ? (
                 <>
-                  <Badge>JPG</Badge>
-                  <Badge>PNG</Badge>
-                  <Badge>WEBP</Badge>
-                  <Badge className="bg-primary/20 text-primary border-primary/50">
+                  <span className="px-2 py-1 text-[10px] font-bold font-mono border rounded bg-muted text-muted-foreground">
+                    JPG
+                  </span>
+                  <span className="px-2 py-1 text-[10px] font-bold font-mono border rounded bg-muted text-muted-foreground">
+                    PNG
+                  </span>
+                  <span className="px-2 py-1 text-[10px] font-bold font-mono border rounded bg-muted text-muted-foreground">
+                    WEBP
+                  </span>
+                  <span className="px-2 py-1 text-[10px] font-bold font-mono border border-primary/50 rounded bg-primary/20 text-primary">
                     AVIF
-                  </Badge>
+                  </span>
                 </>
               ) : (
                 <>
-                  <Badge>MP4</Badge>
-                  <Badge>MOV</Badge>
-                  <Badge>WEBM</Badge>
+                  <span className="px-2 py-1 text-[10px] font-bold font-mono border rounded bg-muted text-muted-foreground">
+                    MP4
+                  </span>
+                  <span className="px-2 py-1 text-[10px] font-bold font-mono border rounded bg-muted text-muted-foreground">
+                    MOV
+                  </span>
+                  <span className="px-2 py-1 text-[10px] font-bold font-mono border rounded bg-muted text-muted-foreground">
+                    WEBM
+                  </span>
                 </>
               )}
-              <span className="text-[10px] font-mono self-center text-muted-foreground ml-2">
-                {mode === "image" ? "MAX 10MB" : "MAX 100MB"}
-              </span>
             </div>
           </div>
         </div>
 
-        {/* Scanlines Effect */}
         <div className="absolute inset-0 pointer-events-none scanlines opacity-5" />
       </motion.div>
     </div>
-  );
-}
-
-// Mini componente Badge interno para no ensuciar
-function Badge({
-  children,
-  className,
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <span
-      className={cn(
-        "px-2 py-1 text-[10px] font-bold font-mono border rounded bg-muted text-muted-foreground",
-        className,
-      )}
-    >
-      {children}
-    </span>
   );
 }

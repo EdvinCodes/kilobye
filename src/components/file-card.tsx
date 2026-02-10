@@ -1,7 +1,15 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { X, Download, Play, FileVideo, FileImage } from "lucide-react";
+import {
+  X,
+  Download,
+  Play,
+  FileVideo,
+  FileImage,
+  FileAudio,
+  Film,
+} from "lucide-react"; // Importa FileAudio y Film
 import { MediaFile, useFileStore } from "@/store/file-store";
 import { Button } from "@/components/ui/button";
 import { downloadBlob } from "@/lib/download-utils";
@@ -19,19 +27,25 @@ export function FileCard({ fileData }: FileCardProps) {
 
   const handleDownload = () => {
     if (fileData.compressedFile) {
-      let correctName = fileData.file.name;
-      if (mode === "video") {
-        const parts = fileData.file.name.split(".");
-        parts.pop();
-        correctName = parts.join(".") + ".mp4";
-      } else {
-        correctName = getCorrectFileName(
-          fileData.file.name,
-          fileData.compressedFile,
-        );
-      }
+      // Usamos la función inteligente que mira el MIME type del blob resultante
+      // Ya no forzamos .mp4 a ciegas
+      const correctName = getCorrectFileName(
+        fileData.file.name,
+        fileData.compressedFile,
+      );
       downloadBlob(fileData.compressedFile, correctName);
     }
+  };
+
+  // Determinar icono basado en el resultado (si existe) o en el modo
+  const getIcon = () => {
+    if (fileData.compressedFile?.type.startsWith("audio"))
+      return <FileAudio className="w-3 h-3 text-yellow-400" />;
+    if (fileData.compressedFile?.type === "image/gif")
+      return <Film className="w-3 h-3 text-pink-400" />;
+    if (mode === "image")
+      return <FileImage className="w-3 h-3 text-muted-foreground" />;
+    return <FileVideo className="w-3 h-3 text-violet-400" />;
   };
 
   return (
@@ -44,9 +58,7 @@ export function FileCard({ fileData }: FileCardProps) {
       className={cn(
         "relative group overflow-hidden bg-card text-card-foreground rounded-xl",
         "border-[1px] border-border/60",
-        // SOMBRA AMBIENTAL SUAVE
         "shadow-lg hover:shadow-2xl transition-all duration-300",
-        // BORDE DE COLOR SEGÚN MODO AL HOVER
         mode === "image"
           ? "hover:border-primary/50 hover:shadow-[0_10px_40px_-15px_rgba(255,100,0,0.3)]"
           : "hover:border-violet-500/50 hover:shadow-[0_10px_40px_-15px_rgba(139,92,246,0.3)]",
@@ -55,11 +67,7 @@ export function FileCard({ fileData }: FileCardProps) {
       {/* --- HEADER --- */}
       <div className="h-9 bg-muted/50 border-b border-border/40 flex items-center justify-between px-3 select-none">
         <div className="flex items-center gap-2 max-w-[85%]">
-          {mode === "image" ? (
-            <FileImage className="w-3 h-3 text-muted-foreground" />
-          ) : (
-            <FileVideo className="w-3 h-3 text-violet-400" />
-          )}
+          {getIcon()}
           <span className="text-[10px] font-bold font-mono truncate uppercase tracking-tight text-foreground/80">
             {fileData.file.name}
           </span>
@@ -76,14 +84,14 @@ export function FileCard({ fileData }: FileCardProps) {
       </div>
 
       {/* --- PREVIEW AREA --- */}
-      <div className="relative w-full h-48 sm:h-auto sm:aspect-square bg-black/5 dark:bg-black/40 overflow-hidden">
-        {/* EFECTO CRT SCANLINES (Overlay decorativo) */}
+      <div className="relative w-full h-48 sm:h-auto sm:aspect-square bg-black/5 dark:bg-black/40 overflow-hidden flex items-center justify-center">
+        {/* CRT SCANLINES */}
         <div
           className="absolute inset-0 z-10 pointer-events-none opacity-[0.05] bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))]"
           style={{ backgroundSize: "100% 2px, 3px 100%" }}
         />
 
-        {/* LOADING BAR (VIDEO) */}
+        {/* LOADING BAR */}
         {fileData.status === "compressing" &&
           fileData.progress !== undefined && (
             <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm p-6">
@@ -95,14 +103,20 @@ export function FileCard({ fileData }: FileCardProps) {
                 />
               </div>
               <div className="flex justify-between w-full text-[10px] font-mono text-green-400">
-                <span className="animate-pulse">PROCESSING_CHUNKS</span>
+                <span className="animate-pulse">PROCESSING</span>
                 <span>{fileData.progress}%</span>
               </div>
             </div>
           )}
 
         {/* CONTENIDO REAL */}
-        {mode === "image" ? (
+        {fileData.compressedFile?.type.startsWith("audio") ? (
+          // VISTA PREVIA DE AUDIO (Onda sonora estática)
+          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-yellow-500/10 to-orange-500/10">
+            <FileAudio className="w-16 h-16 text-yellow-500/50 animate-pulse" />
+          </div>
+        ) : // VISTA PREVIA VISUAL (Imagen o Video)
+        mode === "image" ? (
           <Image
             src={fileData.preview}
             alt={fileData.file.name}
@@ -137,7 +151,9 @@ export function FileCard({ fileData }: FileCardProps) {
               animate={{ opacity: 1, scale: 1, rotate: -10 }}
               className="border-[3px] border-green-500 text-green-500 font-black font-mono px-4 py-1 text-xl rounded-lg bg-green-950/40 backdrop-blur-sm shadow-[0_0_15px_-3px_rgba(34,197,94,0.6)]"
             >
-              SAVED
+              {fileData.compressedFile?.type.includes("gif")
+                ? "GIF READY"
+                : "SAVED"}
             </motion.div>
           </div>
         )}
@@ -145,7 +161,6 @@ export function FileCard({ fileData }: FileCardProps) {
 
       {/* --- INFO FOOTER --- */}
       <div className="p-3 bg-card space-y-3 font-mono text-[10px]">
-        {/* DATA GRID */}
         <div className="grid grid-cols-2 gap-2 text-muted-foreground/80">
           <div className="flex flex-col">
             <span className="text-[9px] uppercase opacity-50">Original</span>
@@ -165,13 +180,15 @@ export function FileCard({ fileData }: FileCardProps) {
           </div>
         </div>
 
-        {/* BOTÓN DESCARGAR */}
         {fileData.status === "done" && (
           <Button
             onClick={handleDownload}
             className="w-full h-8 text-[10px] font-bold tracking-widest bg-foreground text-background hover:bg-primary hover:text-primary-foreground transition-all active:scale-95 shadow-md"
           >
-            <Download className="mr-2 h-3 w-3" /> GET FILE
+            <Download className="mr-2 h-3 w-3" />
+            {fileData.compressedFile?.type.includes("audio")
+              ? "DOWNLOAD MP3"
+              : "GET FILE"}
           </Button>
         )}
       </div>

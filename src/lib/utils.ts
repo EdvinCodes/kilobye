@@ -25,19 +25,36 @@ export function getExtensionFromMimeType(mimeType: string): string {
       return ".png";
     case "image/webp":
       return ".webp";
-    case "image/avif": // <--- AÑADIDO
+    case "image/avif":
       return ".avif";
+    case "image/gif":
+      return ".gif"; // <--- NUEVO
+    case "video/mp4":
+      return ".mp4"; // <--- NUEVO
+    case "video/quicktime":
+      return ".mov"; // <--- NUEVO
+    case "video/webm":
+      return ".webm"; // <--- NUEVO
+    case "audio/mpeg":
+      return ".mp3"; // <--- NUEVO
     default:
       return "";
   }
 }
 
 export function getCorrectFileName(originalName: string, blob: Blob): string {
+  // 1. Intentamos obtener la extensión del tipo MIME del resultado
   const newExtension = getExtensionFromMimeType(blob.type);
-  if (!newExtension) return originalName;
 
-  const dotIndex = originalName.lastIndexOf(".");
-  if (dotIndex === -1) return originalName + newExtension;
+  // 2. Quitamos la extensión original del nombre
+  const nameParts = originalName.split(".");
+  if (nameParts.length > 1) nameParts.pop();
+  const baseName = nameParts.join(".");
 
-  return originalName.substring(0, dotIndex) + newExtension;
+  // 3. Si tenemos extensión nueva, la usamos. Si no, devolvemos el original.
+  if (newExtension) {
+    return baseName + newExtension;
+  }
+
+  return originalName;
 }

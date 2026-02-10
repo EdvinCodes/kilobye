@@ -5,12 +5,24 @@ import { useFileStore } from "@/store/file-store";
 import { FileCard } from "./file-card";
 import { AnimatePresence, motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Zap, Archive, Settings2, Cpu } from "lucide-react";
+import {
+  Zap,
+  Archive,
+  Settings2,
+  Cpu,
+  Volume2,
+  VolumeX,
+  Target,
+} from "lucide-react";
 import { compressImage, type OutputFormat } from "@/lib/compression";
 import { downloadAllAsZip } from "@/lib/download-utils";
 import { triggerPixelConfetti } from "@/lib/confetti";
 import { useRetroSound } from "@/hooks/use-retro-sound";
-import { useFFmpeg, type VideoSettings } from "@/hooks/use-ffmpeg";
+import {
+  useFFmpeg,
+  type VideoSettings,
+  type TargetSizePreset,
+} from "@/hooks/use-ffmpeg";
 import { cn } from "@/lib/utils";
 
 import {
@@ -22,6 +34,7 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Toggle } from "@/components/ui/toggle";
 
 export function FileList() {
   const { files, updateFile, mode } = useFileStore();
@@ -39,6 +52,9 @@ export function FileList() {
     resolution: "720",
     fps: "30",
     quality: "medium",
+    targetSize: null, // "Social Preset" desactivado por defecto
+    removeAudio: false,
+    format: "mp4",
   });
 
   const isAllDone = files.length > 0 && files.every((f) => f.status === "done");
@@ -86,6 +102,7 @@ export function FileList() {
             videoFile.file,
             videoSettings,
             (progress) => updateFile(videoFile.id, { progress }),
+            videoFile.duration, // <--- VITAL: Pasamos la duración para calcular bitrate
           );
 
           updateFile(videoFile.id, {
@@ -178,7 +195,6 @@ export function FileList() {
                   Max Width
                 </Label>
                 <div className="relative">
-                  {/* ANCHO AUMENTADO A 140px */}
                   <Input
                     id="width"
                     type="number"
@@ -200,7 +216,6 @@ export function FileList() {
                 <Label className="font-mono text-[10px] text-muted-foreground uppercase px-2">
                   Format
                 </Label>
-                {/* ANCHO AUMENTADO A 140px */}
                 <Select
                   value={outputFormat}
                   onValueChange={(v) => setOutputFormat(v as OutputFormat)}
@@ -229,87 +244,141 @@ export function FileList() {
           {/* --- CONTROLES MODO VIDEO --- */}
           {mode === "video" && (
             <div className="flex flex-wrap gap-3 items-center bg-violet-500/5 p-2 rounded-xl border border-violet-500/20">
-              {/* Resolución */}
+              {/* FILA 1: TARGET SIZE (FEATURE ESTRELLA) */}
               <div className="flex flex-col gap-1">
-                <Label className="font-mono text-[9px] text-violet-400/70 uppercase ml-1">
-                  Resolution
+                <Label className="font-mono text-[9px] text-violet-400/70 uppercase ml-1 flex items-center gap-1">
+                  <Target className="w-3 h-3" /> Target Size
                 </Label>
-                {/* ANCHO AUMENTADO A 130px */}
                 <Select
-                  value={videoSettings.resolution}
+                  value={videoSettings.targetSize || "none"}
                   onValueChange={(v) =>
                     setVideoSettings((p) => ({
                       ...p,
-                      resolution: v as VideoSettings["resolution"],
+                      targetSize: v === "none" ? null : (v as TargetSizePreset),
                     }))
                   }
-                  disabled={isProcessing || isAllDone}
+                  disabled={
+                    isProcessing || isAllDone || videoSettings.format !== "mp4"
+                  }
                 >
-                  <SelectTrigger className="w-[130px] h-8 font-mono text-xs border-violet-500/30 text-violet-300 bg-violet-950/20">
-                    <SelectValue />
+                  <SelectTrigger className="w-[150px] h-8 font-mono text-xs border-violet-500/30 text-violet-300 bg-violet-950/20 focus:ring-violet-500/50">
+                    <SelectValue placeholder="Select Target" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="original">Original</SelectItem>
-                    <SelectItem value="1080">1080p</SelectItem>
-                    <SelectItem value="720">720p</SelectItem>
-                    <SelectItem value="480">480p</SelectItem>
+                    <SelectItem value="none">Default (Auto)</SelectItem>
+                    <SelectItem value="discord-8mb">Discord (8MB)</SelectItem>
+                    <SelectItem value="whatsapp-16mb">
+                      WhatsApp (16MB)
+                    </SelectItem>
+                    <SelectItem value="email-25mb">Email (25MB)</SelectItem>
+                    <SelectItem value="custom-10mb">Custom (10MB)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
-              {/* FPS */}
+              <div className="w-px h-6 bg-violet-500/20 hidden sm:block mx-1" />
+
+              {/* FILA 2: FORMATO DE SALIDA */}
               <div className="flex flex-col gap-1">
-                <Label className="font-mono text-[9px] text-violet-400/70 uppercase ml-1">
-                  FPS
+                <Label className="font-mono text-[9px] text-violet-400/70 uppercase ml-1 font-bold">
+                  Output Format
                 </Label>
-                {/* ANCHO AUMENTADO A 110px */}
                 <Select
-                  value={videoSettings.fps}
+                  value={videoSettings.format}
                   onValueChange={(v) =>
                     setVideoSettings((p) => ({
                       ...p,
-                      fps: v as VideoSettings["fps"],
+                      format: v as VideoSettings["format"], // <--- FIX 1: Tipo seguro
                     }))
                   }
                   disabled={isProcessing || isAllDone}
                 >
-                  <SelectTrigger className="w-[110px] h-8 font-mono text-xs border-violet-500/30 text-violet-300 bg-violet-950/20">
+                  <SelectTrigger className="w-[80px] h-8 font-mono text-xs border-violet-500/30 text-violet-300 bg-violet-950/20">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="original">Orig</SelectItem>
-                    <SelectItem value="60">60 FPS</SelectItem>
-                    <SelectItem value="30">30 FPS</SelectItem>
+                    <SelectItem value="mp4">MP4 (Video)</SelectItem>
+                    <SelectItem value="gif">GIF (Anim)</SelectItem>
+                    <SelectItem value="mp3">MP3 (Audio)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
-              {/* Calidad */}
-              <div className="flex flex-col gap-1">
-                <Label className="font-mono text-[9px] text-violet-400/70 uppercase ml-1">
-                  Quality
+              {/* FILA 3: TOGGLE AUDIO */}
+              <div className="flex flex-col gap-1 items-center">
+                <Label className="font-mono text-[9px] text-violet-400/70 uppercase">
+                  Audio
                 </Label>
-                {/* ANCHO AUMENTADO A 120px */}
-                <Select
-                  value={videoSettings.quality}
-                  onValueChange={(v) =>
-                    setVideoSettings((p) => ({
-                      ...p,
-                      quality: v as VideoSettings["quality"],
-                    }))
+                <Toggle
+                  pressed={!videoSettings.removeAudio}
+                  onPressedChange={(pressed) =>
+                    setVideoSettings((p) => ({ ...p, removeAudio: !pressed }))
                   }
-                  disabled={isProcessing || isAllDone}
+                  disabled={
+                    isProcessing || isAllDone || videoSettings.format === "gif"
+                  }
+                  className="h-8 w-8 data-[state=on]:bg-violet-500/20 data-[state=on]:text-violet-300 border border-violet-500/30"
                 >
-                  <SelectTrigger className="w-[120px] h-8 font-mono text-xs border-violet-500/30 text-violet-300 bg-violet-950/20">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="high">High</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="low">Low</SelectItem>
-                  </SelectContent>
-                </Select>
+                  {videoSettings.removeAudio ? (
+                    <VolumeX className="w-4 h-4" />
+                  ) : (
+                    <Volume2 className="w-4 h-4" />
+                  )}
+                </Toggle>
               </div>
+
+              {/* CONFIGURACIÓN AVANZADA (Solo si no hay Target Size) */}
+              {!videoSettings.targetSize && videoSettings.format === "mp4" && (
+                <>
+                  <div className="w-px h-6 bg-violet-500/20 hidden sm:block mx-1" />
+                  <div className="flex flex-col gap-1">
+                    <Label className="font-mono text-[9px] text-violet-400/70 uppercase ml-1">
+                      Res / FPS
+                    </Label>
+                    <div className="flex gap-1">
+                      <Select
+                        value={videoSettings.resolution}
+                        onValueChange={(v) =>
+                          setVideoSettings((p) => ({
+                            ...p,
+                            resolution: v as VideoSettings["resolution"], // <--- FIX 2: Tipo seguro
+                          }))
+                        }
+                        disabled={isProcessing || isAllDone}
+                      >
+                        <SelectTrigger className="w-[80px] h-8 font-mono text-xs border-violet-500/30 text-violet-300 bg-violet-950/20">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="original">Orig</SelectItem>
+                          <SelectItem value="1080">1080p</SelectItem>
+                          <SelectItem value="720">720p</SelectItem>
+                          <SelectItem value="480">480p</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Select
+                        value={videoSettings.fps}
+                        onValueChange={(v) =>
+                          setVideoSettings((p) => ({
+                            ...p,
+                            fps: v as VideoSettings["fps"], // <--- FIX 3: Tipo seguro
+                          }))
+                        }
+                        disabled={isProcessing || isAllDone}
+                      >
+                        <SelectTrigger className="w-[70px] h-8 font-mono text-xs border-violet-500/30 text-violet-300 bg-violet-950/20">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="original">Orig</SelectItem>
+                          <SelectItem value="60">60fps</SelectItem>
+                          <SelectItem value="30">30fps</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           )}
 

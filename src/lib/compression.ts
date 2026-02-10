@@ -7,9 +7,6 @@ export type OutputFormat =
   | "image/webp"
   | "image/avif";
 
-/**
- * Función auxiliar para forzar el cambio de formato usando Canvas
- */
 async function forceFormatConversion(
   file: Blob,
   targetFormat: string,
@@ -32,8 +29,6 @@ async function forceFormatConversion(
 
       ctx.drawImage(img, 0, 0);
 
-      // CALIBRACIÓN DE CALIDAD
-      // AVIF al 50% (0.5) es visualmente excelente y muy ligero.
       let quality = 0.8;
       if (targetFormat === "image/avif") quality = 0.5;
       if (targetFormat === "image/webp") quality = 0.7;
@@ -69,10 +64,19 @@ export async function compressImage(
   format: OutputFormat = "original",
   maxWidth: number = 0,
 ): Promise<Blob> {
+  // --- FIX GIF: PROTECCIÓN CONTRA ROTURA DE ANIMACIÓN ---
+  // El Canvas mata los GIFs. Si el usuario sube un GIF en modo imagen,
+  // lo devolvemos tal cual para no "estafarle" dándole un PNG estático.
+  if (file.type === "image/gif") {
+    console.warn(
+      "GIF detectado en modo imagen. Se devuelve original para mantener animación.",
+    );
+    return file;
+  }
+
   let targetMaxWidth: number;
   let targetMaxSizeMB: number;
 
-  // 1. Configurar límites
   if (maxWidth === 0) {
     targetMaxWidth = 1920;
     targetMaxSizeMB = 1;
@@ -81,9 +85,6 @@ export async function compressImage(
     targetMaxSizeMB = 50;
   }
 
-  // 2. Determinar el formato para la librería (FIXED LOGIC)
-  // Si es AVIF, usamos WebP como intermedio.
-  // Si es Original, pasamos undefined para que la librería respete el input.
   let fileTypeForLibrary: string | undefined = undefined;
 
   if (format === "image/avif") {
@@ -91,7 +92,6 @@ export async function compressImage(
   } else if (format !== "original") {
     fileTypeForLibrary = format;
   }
-  // Si es "original", fileTypeForLibrary se queda en undefined
 
   const options = {
     maxSizeMB: targetMaxSizeMB,
@@ -102,19 +102,14 @@ export async function compressImage(
   };
 
   try {
-    // 3. Compresión Base
     let compressedBlob: Blob = await imageCompression(file, options);
 
-    // 4. Conversión Final (Si es necesaria)
-    // Caso especial AVIF: Convertimos el WebP intermedio a AVIF
     if (format === "image/avif" && compressedBlob.type !== "image/avif") {
       compressedBlob = await forceFormatConversion(
         compressedBlob,
         "image/avif",
       );
-    }
-    // Caso otros formatos: Si la librería falló en el tipo (raro), forzamos
-    else if (format !== "original" && compressedBlob.type !== format) {
+    } else if (format !== "original" && compressedBlob.type !== format) {
       compressedBlob = await forceFormatConversion(compressedBlob, format);
     }
 

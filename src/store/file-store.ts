@@ -11,14 +11,15 @@ export interface MediaFile {
   originalSize: number;
   compressedSize?: number;
   compressedFile?: Blob;
-  progress?: number; // Para la barra de carga de video
+  progress?: number;
+  duration?: number;
 }
 
 interface FileState {
   files: MediaFile[];
   mode: MediaType;
   isMuted: boolean;
-  
+
   toggleMute: () => void;
   setMode: (mode: MediaType) => void;
   addFiles: (newFiles: MediaFile[]) => void;
@@ -34,20 +35,19 @@ export const useFileStore = create<FileState>()(
       isMuted: false,
 
       toggleMute: () => set((state) => ({ isMuted: !state.isMuted })),
-      
-      // Al cambiar de modo, borramos los archivos anteriores para no mezclar
+
       setMode: (mode) => set({ mode, files: [] }),
 
       addFiles: (newFiles) =>
         set((state) => ({
           files: [...state.files, ...newFiles],
         })),
-        
+
       removeFile: (id) =>
         set((state) => ({
           files: state.files.filter((f) => f.id !== id),
         })),
-        
+
       updateFile: (id, updates) =>
         set((state) => ({
           files: state.files.map((f) =>
