@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { ModeToggle } from "@/components/mode-toggle"; // IMPORTANTE
 
+import { InstallPrompt } from "@/components/install-prompt";
+
 const KiloByeLogo = () => (
   <svg
     width="32"
@@ -121,6 +123,8 @@ export default function Home() {
         <div className="w-full mt-12 animate-in fade-in duration-1000 delay-300">
           <FileList />
         </div>
+
+        <InstallPrompt />
       </main>
 
       <footer className="py-8 text-center text-xs md:text-sm text-muted-foreground/60 border-t border-border/20 px-4">

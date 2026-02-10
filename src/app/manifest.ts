@@ -11,18 +11,16 @@ export default function manifest(): MetadataRoute.Manifest {
     theme_color: "#7c3aed",
     icons: [
       {
-        src: "/icon-192.png",
+        src: "/icon-192.png", // Busca en public/icon-192.png
         sizes: "192x192",
         type: "image/png",
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        purpose: "any maskable" as any,
+        purpose: "maskable", // Opcional, ayuda en Android
       },
       {
-        src: "/icon-512.png",
+        src: "/icon-512.png", // Busca en public/icon-512.png
         sizes: "512x512",
         type: "image/png",
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        purpose: "any maskable" as any,
+        purpose: "maskable",
       },
     ],
   };
