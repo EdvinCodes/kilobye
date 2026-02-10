@@ -74,7 +74,7 @@ export function useFFmpeg() {
     if (settings.format === "mp3") outputExt = ".mp3";
     const outputName = "output" + outputExt;
 
-    // Escribir archivo principal en memoria WASM
+    // Escribir archivo principal
     await ffmpeg.writeFile(inputName, await fetchFile(file));
 
     // --- CASO ESPECIAL: MP3 (Solo audio) ---
@@ -82,18 +82,16 @@ export function useFFmpeg() {
       const command = [
         "-i",
         inputName,
-        "-vn", // Eliminar video
+        "-vn",
         "-acodec",
         "libmp3lame",
         "-q:a",
-        "2", // Alta calidad VBR (~190kbps)
+        "2",
         outputName,
       ];
-
       ffmpeg.on("progress", ({ progress }) => {
         onProgress(Math.max(0, Math.min(100, Math.round(progress * 100))));
       });
-
       await ffmpeg.exec(command);
       const data = await ffmpeg.readFile(outputName);
       await cleanup(ffmpeg, inputName, outputName);
@@ -113,11 +111,11 @@ export function useFFmpeg() {
     }
 
     // 2. Construir Filter Complex (Cadena de filtros)
-    // Esto es necesario para combinar Escala + Watermark en el mismo paso
+    // AQUI ESTABA EL ERROR. AHORA USAMOS scale2ref
     let filterComplex = "";
 
     if (hasWatermark && watermarkSettings) {
-      // Calcular posición del overlay
+      // Calcular posición
       const m = watermarkSettings.margin;
       let x = "",
         y = "";
@@ -145,49 +143,44 @@ export function useFFmpeg() {
           break;
       }
 
-      // CADENA DE FILTROS:
-      // [0:v] -> Video Input
-      // [1:v] -> Logo Input
-      // 1. Si hay cambio de resolución, escalamos el video [0:v] primero -> [bg]
-      // 2. Escalamos el logo [1:v] relativo al video -> [fg]
-      // 3. Superponemos [bg][fg] -> Output
+      const logoScale = watermarkSettings.scale;
 
-      const scaleFilter =
-        settings.resolution !== "original"
-          ? `scale=-2:${settings.resolution}`
-          : "null";
-      const logoScale = watermarkSettings.scale; // 0.1 a 0.5
+      // Definimos quién es el video base.
+      let videoStream = "[0:v]";
+      let scaleFilter = "";
 
-      // Explicación del grafo:
-      // [0:v]scale...[bg] : Escala el video base y lo llama 'bg'
-      // [1:v]scale...[fg] : Escala el logo relativo al input (iw*scale) y lo llama 'fg'
-      // [bg][fg]overlay...: Pone fg sobre bg
-      filterComplex = `[0:v]${scaleFilter}[bg];[1:v]scale=iw*${logoScale}:-1[fg];[bg][fg]overlay=${x}:${y}`;
+      // Si el usuario pidió cambiar resolución (ej: 720p), escalamos el video PRIMERO.
+      if (settings.resolution !== "original") {
+        scaleFilter = `[0:v]scale=-2:${settings.resolution}[bg];`;
+        videoStream = "[bg]";
+      }
+
+      // LA MAGIA: scale2ref
+      // [1:v] (logo) se escala referenciando a videoStream.
+      // w=iw*logoScale -> Aquí 'iw' es el ancho del VIDEO (la referencia), no del logo.
+      // Salen dos streams nuevos: [wm_scaled] y [video_ref]
+      filterComplex = `${scaleFilter}[1:v]${videoStream}scale2ref=w=iw*${logoScale}:h=-1[wm_scaled][video_ref];[video_ref][wm_scaled]overlay=${x}:${y}`;
     } else if (settings.resolution !== "original") {
-      // Si no hay watermark, solo escalamos simple
+      // Si no hay watermark, escalado simple
       filterComplex = `scale=-2:${settings.resolution}`;
     }
 
     // 3. Construir Comando Principal
     const command: string[] = [];
 
-    // Inputs
     command.push("-i", inputName);
     if (hasWatermark) command.push("-i", "watermark.png");
 
-    // Aplicar filtros
     if (filterComplex) {
       command.push("-filter_complex", filterComplex);
     }
 
-    // FPS
     if (settings.fps !== "original") {
       command.push("-r", settings.fps);
     }
 
-    // Audio
     if (settings.removeAudio || settings.format === "gif") {
-      command.push("-an"); // Sin audio
+      command.push("-an");
     } else {
       command.push("-c:a", "aac", "-b:a", "128k");
     }
@@ -205,7 +198,6 @@ export function useFFmpeg() {
       if (settings.targetSize === "whatsapp-16mb") targetMB = 15;
       if (settings.targetSize === "custom-10mb") targetMB = 10;
 
-      // (MB * 8192) / seconds = kbits
       const audioBitrate = settings.removeAudio ? 0 : 128;
       let videoBitrate =
         Math.floor((targetMB * 8192) / duration) - audioBitrate;
@@ -224,35 +216,23 @@ export function useFFmpeg() {
         "ultrafast",
       );
     } else {
-      // Modo Calidad (CRF)
       if (settings.format !== "gif") {
         let crf = "28";
         if (settings.quality === "high") crf = "23";
         if (settings.quality === "low") crf = "32";
-
         command.push("-c:v", "libx264", "-crf", crf, "-preset", "ultrafast");
       }
     }
 
-    // GIF específico (paleta optimizada básica para velocidad)
-    if (settings.format === "gif") {
-      // Para GIF usamos split+palettegen para mejor calidad, pero es lento.
-      // Por velocidad en browser, usaremos dither simple si el filtro complejo ya existe.
-      // Si no hay filtro complejo, podemos añadir fps y escala aquí.
-    }
-
     command.push(outputName);
 
-    // --- EJECUCIÓN ---
     ffmpeg.on("progress", ({ progress }) => {
       onProgress(Math.max(0, Math.min(100, Math.round(progress * 100))));
     });
 
     await ffmpeg.exec(command);
-
     const data = await ffmpeg.readFile(outputName);
 
-    // Limpieza
     await cleanup(ffmpeg, inputName, outputName);
     if (hasWatermark) {
       try {
