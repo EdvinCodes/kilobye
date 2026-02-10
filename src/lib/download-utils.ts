@@ -1,5 +1,5 @@
 import JSZip from "jszip";
-import { ImageFile } from "@/store/file-store";
+import { MediaFile } from "@/store/file-store"; // <--- CAMBIO AQUÍ (Antes era ImageFile)
 import { getCorrectFileName } from "./utils";
 
 /**
@@ -24,19 +24,32 @@ export function downloadBlob(blob: Blob, filename: string) {
 }
 
 /**
- * Genera un ZIP con todas las imágenes comprimidas y lo descarga
+ * Genera un ZIP con todos los archivos comprimidos y lo descarga
  */
-export async function downloadAllAsZip(files: ImageFile[]) {
+export async function downloadAllAsZip(files: MediaFile[]) { // <--- CAMBIO AQUÍ EL TIPO
   const zip = new JSZip();
   const folder = zip.folder("kilobye-optimized");
 
   let count = 0;
-  files.forEach((img) => {
-    if (img.status === "done" && img.compressedFile) {
-      // USAMOS LA FUNCIÓN AQUÍ TAMBIÉN
-      const correctName = getCorrectFileName(img.file.name, img.compressedFile);
+  files.forEach((media) => {
+    if (media.status === "done" && media.compressedFile) {
+      
+      // Lógica simple para nombre: Si es video y no tiene extensión mp4, se la ponemos
+      // Si es imagen, usamos la lógica inteligente de utils
+      let finalName = media.file.name;
+      
+      if (media.file.type.startsWith("video")) {
+         const parts = media.file.name.split('.');
+         // Si ya es .mp4 lo dejamos, si no, forzamos .mp4 (ya que FFmpeg saca mp4)
+         if (parts[parts.length - 1] !== 'mp4') {
+            parts.pop();
+            finalName = parts.join('.') + ".mp4";
+         }
+      } else {
+         finalName = getCorrectFileName(media.file.name, media.compressedFile);
+      }
 
-      folder?.file(correctName, img.compressedFile);
+      folder?.file(finalName, media.compressedFile);
       count++;
     }
   });
@@ -44,5 +57,5 @@ export async function downloadAllAsZip(files: ImageFile[]) {
   if (count === 0) return;
 
   const content = await zip.generateAsync({ type: "blob" });
-  downloadBlob(content, `kilobye-images-${Date.now()}.zip`);
+  downloadBlob(content, `kilobye-pack-${Date.now()}.zip`);
 }
