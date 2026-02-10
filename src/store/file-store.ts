@@ -3,6 +3,24 @@ import { persist } from "zustand/middleware";
 
 export type MediaType = "image" | "video";
 
+// NUEVO: Configuración de Marca de Agua
+export type WatermarkPosition =
+  | "top-left"
+  | "top-right"
+  | "bottom-left"
+  | "bottom-right"
+  | "center";
+
+export interface WatermarkSettings {
+  file: File | null;
+  preview: string | null;
+  opacity: number; // 0.1 a 1
+  scale: number; // 10% a 50% del ancho del video/imagen
+  position: WatermarkPosition;
+  margin: number; // px desde el borde
+  isEnabled: boolean;
+}
+
 export interface MediaFile {
   id: string;
   file: File;
@@ -19,12 +37,17 @@ interface FileState {
   files: MediaFile[];
   mode: MediaType;
   isMuted: boolean;
+  // NUEVO: Estado de Watermark
+  watermark: WatermarkSettings;
 
   toggleMute: () => void;
   setMode: (mode: MediaType) => void;
   addFiles: (newFiles: MediaFile[]) => void;
   removeFile: (id: string) => void;
   updateFile: (id: string, updates: Partial<MediaFile>) => void;
+  // NUEVO: Actions de Watermark
+  setWatermark: (settings: Partial<WatermarkSettings>) => void;
+  clearWatermark: () => void;
 }
 
 export const useFileStore = create<FileState>()(
@@ -33,6 +56,17 @@ export const useFileStore = create<FileState>()(
       files: [],
       mode: "image",
       isMuted: false,
+
+      // Estado Inicial Watermark
+      watermark: {
+        file: null,
+        preview: null,
+        opacity: 0.8,
+        scale: 0.2, // 20% del ancho
+        position: "bottom-right",
+        margin: 20,
+        isEnabled: false,
+      },
 
       toggleMute: () => set((state) => ({ isMuted: !state.isMuted })),
 
@@ -54,10 +88,32 @@ export const useFileStore = create<FileState>()(
             f.id === id ? { ...f, ...updates } : f,
           ),
         })),
+
+      // Actions Watermark
+      setWatermark: (settings) =>
+        set((state) => ({
+          watermark: { ...state.watermark, ...settings },
+        })),
+
+      clearWatermark: () =>
+        set((state) => ({
+          watermark: {
+            ...state.watermark,
+            file: null,
+            preview: null,
+            isEnabled: false,
+          },
+        })),
     }),
     {
       name: "kilobye-storage",
-      partialize: (state) => ({ isMuted: state.isMuted, mode: state.mode }),
+      partialize: (state) => ({
+        isMuted: state.isMuted,
+        mode: state.mode,
+        // Persistimos todo menos el archivo binario del watermark (no serializable)
+        // Lo ideal sería guardar base64, pero por ahora reseteamos file al recargar
+        // para evitar complejidad.
+      }),
     },
   ),
 );

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useFileStore } from "@/store/file-store";
 import { FileCard } from "./file-card";
+import { WatermarkPanel } from "./watermark-panel"; // <--- NUEVO IMPORT
 import { AnimatePresence, motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import {
@@ -37,7 +38,7 @@ import { Input } from "@/components/ui/input";
 import { Toggle } from "@/components/ui/toggle";
 
 export function FileList() {
-  const { files, updateFile, mode } = useFileStore();
+  const { files, updateFile, mode, watermark } = useFileStore(); // <--- Extraemos watermark
   const [isProcessing, setIsProcessing] = useState(false);
   const { playSuccess, playClick } = useRetroSound();
 
@@ -52,7 +53,7 @@ export function FileList() {
     resolution: "720",
     fps: "30",
     quality: "medium",
-    targetSize: null, // "Social Preset" desactivado por defecto
+    targetSize: null,
     removeAudio: false,
     format: "mp4",
   });
@@ -81,6 +82,7 @@ export function FileList() {
               imageFile.file,
               outputFormat,
               maxWidth,
+              watermark, // <--- Pasamos configuración de Watermark
             );
             updateFile(imageFile.id, {
               status: "done",
@@ -102,7 +104,8 @@ export function FileList() {
             videoFile.file,
             videoSettings,
             (progress) => updateFile(videoFile.id, { progress }),
-            videoFile.duration, // <--- VITAL: Pasamos la duración para calcular bitrate
+            videoFile.duration,
+            watermark, // <--- Pasamos configuración de Watermark
           );
 
           updateFile(videoFile.id, {
@@ -244,7 +247,7 @@ export function FileList() {
           {/* --- CONTROLES MODO VIDEO --- */}
           {mode === "video" && (
             <div className="flex flex-wrap gap-3 items-center bg-violet-500/5 p-2 rounded-xl border border-violet-500/20">
-              {/* FILA 1: TARGET SIZE (FEATURE ESTRELLA) */}
+              {/* FILA 1: TARGET SIZE */}
               <div className="flex flex-col gap-1">
                 <Label className="font-mono text-[9px] text-violet-400/70 uppercase ml-1 flex items-center gap-1">
                   <Target className="w-3 h-3" /> Target Size
@@ -288,7 +291,7 @@ export function FileList() {
                   onValueChange={(v) =>
                     setVideoSettings((p) => ({
                       ...p,
-                      format: v as VideoSettings["format"], // <--- FIX 1: Tipo seguro
+                      format: v as VideoSettings["format"],
                     }))
                   }
                   disabled={isProcessing || isAllDone}
@@ -327,7 +330,7 @@ export function FileList() {
                 </Toggle>
               </div>
 
-              {/* CONFIGURACIÓN AVANZADA (Solo si no hay Target Size) */}
+              {/* CONFIGURACIÓN AVANZADA */}
               {!videoSettings.targetSize && videoSettings.format === "mp4" && (
                 <>
                   <div className="w-px h-6 bg-violet-500/20 hidden sm:block mx-1" />
@@ -341,7 +344,7 @@ export function FileList() {
                         onValueChange={(v) =>
                           setVideoSettings((p) => ({
                             ...p,
-                            resolution: v as VideoSettings["resolution"], // <--- FIX 2: Tipo seguro
+                            resolution: v as VideoSettings["resolution"],
                           }))
                         }
                         disabled={isProcessing || isAllDone}
@@ -361,7 +364,7 @@ export function FileList() {
                         onValueChange={(v) =>
                           setVideoSettings((p) => ({
                             ...p,
-                            fps: v as VideoSettings["fps"], // <--- FIX 3: Tipo seguro
+                            fps: v as VideoSettings["fps"],
                           }))
                         }
                         disabled={isProcessing || isAllDone}
@@ -435,6 +438,11 @@ export function FileList() {
           </div>
         </div>
       </motion.div>
+
+      {/* --- PANEL WATERMARK (NUEVO) --- */}
+      <div className="w-full">
+        <WatermarkPanel />
+      </div>
 
       {/* Grid de Tarjetas */}
       <motion.div
