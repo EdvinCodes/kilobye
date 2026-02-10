@@ -34,7 +34,11 @@ export function useFFmpeg() {
     }
 
     const ffmpeg = ffmpegRef.current;
-    const baseURL = "https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd";
+
+    // --- FASE 4: MULTI-THREADING ACTIVADO ---
+    // Usamos la versión 'core-mt' (Multi-Thread)
+    // Esto requiere los headers COOP/COEP en next.config.ts
+    const baseURL = "https://unpkg.com/@ffmpeg/core-mt@0.12.6/dist/umd";
 
     try {
       await ffmpeg.load({
@@ -46,10 +50,20 @@ export function useFFmpeg() {
           `${baseURL}/ffmpeg-core.wasm`,
           "application/wasm",
         ),
+        // El worker es vital para que el multi-hilo funcione sin congelar la web
+        workerURL: await toBlobURL(
+          `${baseURL}/ffmpeg-core.worker.js`,
+          "text/javascript",
+        ),
       });
+
       setLoaded(true);
+      console.log("🚀 KiloBye Engine: Multi-Threaded Core Loaded");
     } catch (error) {
-      console.error("Fallo al cargar FFmpeg WASM:", error);
+      console.error(
+        "Fallo al cargar FFmpeg MT. Revisa los headers COOP/COEP.",
+        error,
+      );
     } finally {
       setIsLoading(false);
     }
@@ -68,13 +82,12 @@ export function useFFmpeg() {
 
     const inputName = "input" + getExt(file.name);
 
-    // Determinar extensión de salida
     let outputExt = ".mp4";
     if (settings.format === "gif") outputExt = ".gif";
     if (settings.format === "mp3") outputExt = ".mp3";
     const outputName = "output" + outputExt;
 
-    // Escribir archivo principal
+    // Escribir archivo principal en memoria (SharedArrayBuffer gracias a MT)
     await ffmpeg.writeFile(inputName, await fetchFile(file));
 
     // --- CASO ESPECIAL: MP3 (Solo audio) ---
@@ -89,9 +102,11 @@ export function useFFmpeg() {
         "2",
         outputName,
       ];
+
       ffmpeg.on("progress", ({ progress }) => {
         onProgress(Math.max(0, Math.min(100, Math.round(progress * 100))));
       });
+
       await ffmpeg.exec(command);
       const data = await ffmpeg.readFile(outputName);
       await cleanup(ffmpeg, inputName, outputName);
@@ -110,12 +125,10 @@ export function useFFmpeg() {
       );
     }
 
-    // 2. Construir Filter Complex (Cadena de filtros)
-    // AQUI ESTABA EL ERROR. AHORA USAMOS scale2ref
+    // 2. Construir Filter Complex
     let filterComplex = "";
 
     if (hasWatermark && watermarkSettings) {
-      // Calcular posición
       const m = watermarkSettings.margin;
       let x = "",
         y = "";
@@ -145,23 +158,17 @@ export function useFFmpeg() {
 
       const logoScale = watermarkSettings.scale;
 
-      // Definimos quién es el video base.
       let videoStream = "[0:v]";
       let scaleFilter = "";
 
-      // Si el usuario pidió cambiar resolución (ej: 720p), escalamos el video PRIMERO.
       if (settings.resolution !== "original") {
         scaleFilter = `[0:v]scale=-2:${settings.resolution}[bg];`;
         videoStream = "[bg]";
       }
 
-      // LA MAGIA: scale2ref
-      // [1:v] (logo) se escala referenciando a videoStream.
-      // w=iw*logoScale -> Aquí 'iw' es el ancho del VIDEO (la referencia), no del logo.
-      // Salen dos streams nuevos: [wm_scaled] y [video_ref]
+      // Corrección de escala relativa (scale2ref)
       filterComplex = `${scaleFilter}[1:v]${videoStream}scale2ref=w=iw*${logoScale}:h=-1[wm_scaled][video_ref];[video_ref][wm_scaled]overlay=${x}:${y}`;
     } else if (settings.resolution !== "original") {
-      // Si no hay watermark, escalado simple
       filterComplex = `scale=-2:${settings.resolution}`;
     }
 
@@ -203,6 +210,7 @@ export function useFFmpeg() {
         Math.floor((targetMB * 8192) / duration) - audioBitrate;
       if (videoBitrate < 100) videoBitrate = 100;
 
+      // Pass 1: Ultrafast para velocidad máxima en navegador
       command.push(
         "-c:v",
         "libx264",
@@ -214,18 +222,31 @@ export function useFFmpeg() {
         `${videoBitrate * 2}k`,
         "-preset",
         "ultrafast",
+        // Threads: 0 deja que WASM decida (usará todos los cores disponibles gracias a MT)
+        "-threads",
+        "0",
       );
     } else {
       if (settings.format !== "gif") {
         let crf = "28";
         if (settings.quality === "high") crf = "23";
         if (settings.quality === "low") crf = "32";
-        command.push("-c:v", "libx264", "-crf", crf, "-preset", "ultrafast");
+        command.push(
+          "-c:v",
+          "libx264",
+          "-crf",
+          crf,
+          "-preset",
+          "ultrafast",
+          "-threads",
+          "0",
+        );
       }
     }
 
     command.push(outputName);
 
+    // --- EJECUCIÓN ---
     ffmpeg.on("progress", ({ progress }) => {
       onProgress(Math.max(0, Math.min(100, Math.round(progress * 100))));
     });
@@ -249,7 +270,7 @@ export function useFFmpeg() {
   return { loaded, isLoading, load, compressVideo };
 }
 
-// Utilidades internas
+// Utilidades
 async function cleanup(ffmpeg: FFmpeg, input: string, output: string) {
   try {
     await ffmpeg.deleteFile(input);
