@@ -6,10 +6,9 @@ import Link from "next/link";
 import { Github, Volume2, VolumeX } from "lucide-react";
 import { useFileStore } from "@/store/file-store";
 import { Button } from "@/components/ui/button";
-// 1. IMPORTAMOS EL TOGGLE
 import { ThemeToggle } from "@/components/theme-toggle";
+import { ModeToggle } from "@/components/mode-toggle"; // IMPORTANTE
 
-// COMPONENTE LOGO
 const KiloByeLogo = () => (
   <svg
     width="32"
@@ -50,7 +49,6 @@ export default function Home() {
 
   return (
     <div className="flex min-h-screen flex-col overflow-x-hidden">
-      {/* NAVBAR */}
       <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/60">
         <div className="container mx-auto flex h-14 md:h-16 items-center justify-between px-4 sm:px-8">
           <div className="flex items-center gap-3 transition-opacity hover:opacity-80">
@@ -61,10 +59,7 @@ export default function Home() {
           </div>
 
           <nav className="flex items-center gap-4">
-            {/* 2. AÑADIMOS EL TOGGLE AQUÍ */}
             <ThemeToggle />
-
-            {/* Botón de Sonido */}
             <Button
               variant="ghost"
               size="icon"
@@ -77,7 +72,6 @@ export default function Home() {
                 <Volume2 className="h-5 w-5" />
               )}
             </Button>
-
             <Link
               href="https://github.com/EdvinCodes/kilobye"
               target="_blank"
@@ -91,7 +85,6 @@ export default function Home() {
       </header>
 
       <main className="flex-1 flex flex-col items-center justify-start pt-12 md:pt-24 px-4 pb-10 md:pb-20 w-full">
-        {/* HERO SECTION */}
         <div className="text-center space-y-6 md:space-y-8 mb-10 md:mb-16 max-w-4xl animate-in fade-in slide-in-from-bottom-4 duration-700">
           <h1 className="retro-text text-5xl md:text-8xl font-black tracking-widest text-foreground leading-none mb-4 drop-shadow-[4px_4px_0_rgba(255,0,0,0.5)]">
             KILO<span className="text-primary">BYE</span>
@@ -109,11 +102,15 @@ export default function Home() {
           </p>
         </div>
 
+        {/* MODO TOGGLE */}
+        <div className="mb-6 animate-in fade-in slide-in-from-bottom-6 duration-1000 delay-100">
+          <ModeToggle />
+        </div>
+
         {/* ZONA DE ACCIÓN */}
         <div className="w-full max-w-2xl animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-200 px-2 sm:px-0">
           <div className="relative group">
             <div className="absolute -inset-0.5 md:-inset-1 bg-gradient-to-r from-primary/20 to-violet-500/20 rounded-[1.5rem] md:rounded-[2rem] blur-xl md:blur-2xl opacity-50 group-hover:opacity-75 transition duration-1000"></div>
-
             <div className="relative bg-background rounded-[1.5rem] md:rounded-[2rem] ring-1 ring-border/50 overflow-hidden">
               <UploadDropzone />
             </div>
