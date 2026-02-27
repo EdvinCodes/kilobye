@@ -14,6 +14,8 @@ import {
   Volume2,
   VolumeX,
   Target,
+  Youtube,
+  Trash2,
 } from "lucide-react";
 import { compressImage, type OutputFormat } from "@/lib/compression";
 import { downloadAllAsZip } from "@/lib/download-utils";
@@ -38,15 +40,16 @@ import { Input } from "@/components/ui/input";
 import { Toggle } from "@/components/ui/toggle";
 
 export function FileList() {
-  const { files, updateFile, mode, watermark } = useFileStore(); // <--- Extraemos watermark
+  const { files, updateFile, mode, watermark, clearAllFiles } = useFileStore(); // <--- Extraemos watermark
   const [isProcessing, setIsProcessing] = useState(false);
-  const { playSuccess, playClick } = useRetroSound();
+  const { playSuccess, playClick, playDelete } = useRetroSound();
 
   const { compressVideo, load: loadFFmpeg, loaded: ffmpegLoaded } = useFFmpeg();
 
   // ESTADOS IMAGEN
   const [outputFormat, setOutputFormat] = useState<OutputFormat>("original");
   const [maxWidth, setMaxWidth] = useState<number>(0);
+  const [youtubePreset, setYoutubePreset] = useState(false);
 
   // ESTADOS VIDEO
   const [videoSettings, setVideoSettings] = useState<VideoSettings>({
@@ -81,8 +84,9 @@ export function FileList() {
             const compressedBlob = await compressImage(
               imageFile.file,
               outputFormat,
-              maxWidth,
-              watermark, // <--- Pasamos configuración de Watermark
+              youtubePreset ? 1920 : maxWidth, // 1080p estándar para YT
+              youtubePreset ? 1.9 : 0, // 1.9MB para no pasarnos de los 2MB
+              watermark,
             );
             updateFile(imageFile.id, {
               status: "done",
@@ -170,16 +174,40 @@ export function FileList() {
               <h2 className="text-xl font-bold tracking-tight retro-text flex items-center gap-2">
                 OPERATION_CENTER
               </h2>
-              <div className="flex items-center gap-2 text-[10px] font-mono text-muted-foreground">
-                <span className="flex items-center gap-1">
+              {/* Añadimos flex-wrap al contenedor principal */}
+              <div className="flex flex-wrap items-center gap-2 text-[10px] font-mono text-muted-foreground mt-1">
+                {/* Añadimos whitespace-nowrap para que no se rompa el texto */}
+                <span className="flex items-center gap-1 whitespace-nowrap">
                   <span className="relative flex h-2 w-2">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
                   </span>
                   SYSTEM_ONLINE
                 </span>
-                <span>|</span>
-                <span>{files.length} ASSETS LOADED</span>
+
+                <span className="hidden sm:inline text-muted-foreground/50">
+                  |
+                </span>
+
+                {/* Añadimos whitespace-nowrap aquí también */}
+                <span className="whitespace-nowrap text-foreground/80 font-bold">
+                  {files.length} ASSETS LOADED
+                </span>
+
+                {/* BOTÓN CLEAR ALL (Ajustamos el margin-left para móviles) */}
+                <Button
+                  variant="ghost"
+                  size="xs"
+                  onClick={() => {
+                    playDelete();
+                    clearAllFiles();
+                  }}
+                  disabled={isProcessing}
+                  className="ml-0 sm:ml-2 h-5 px-2 text-[9px] text-red-400 hover:text-red-500 hover:bg-red-500/10 border border-red-500/20"
+                >
+                  <Trash2 className="w-3 h-3 mr-1" />
+                  CLEAR
+                </Button>
               </div>
             </div>
           </div>
@@ -190,6 +218,21 @@ export function FileList() {
           {/* --- CONTROLES MODO IMAGEN --- */}
           {mode === "image" && (
             <div className="flex flex-wrap gap-4 items-center bg-background/50 p-2 rounded-xl border border-border/50">
+              {/* NUEVO: Toggle YouTube */}
+              <div className="flex items-center gap-2">
+                <Toggle
+                  pressed={youtubePreset}
+                  onPressedChange={setYoutubePreset}
+                  disabled={isProcessing || isAllDone}
+                  className="h-8 font-mono text-xs border border-red-500/30 data-[state=on]:bg-red-500/20 data-[state=on]:text-red-400 text-muted-foreground gap-2 transition-all"
+                >
+                  <Youtube className="w-3 h-3" />
+                  YT THUMBNAIL (2MB)
+                </Toggle>
+              </div>
+
+              <div className="w-px h-6 bg-border/50 hidden sm:block" />
+
               <div className="flex items-center gap-2">
                 <Label
                   htmlFor="width"

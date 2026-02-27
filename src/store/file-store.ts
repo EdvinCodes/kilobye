@@ -48,6 +48,7 @@ interface FileState {
   // NUEVO: Actions de Watermark
   setWatermark: (settings: Partial<WatermarkSettings>) => void;
   clearWatermark: () => void;
+  clearAllFiles: () => void;
 }
 
 export const useFileStore = create<FileState>()(
@@ -98,6 +99,14 @@ export const useFileStore = create<FileState>()(
             f.id === id ? { ...f, ...updates } : f,
           ),
         })),
+
+      clearAllFiles: () =>
+        set((state) => {
+          state.files.forEach((f) => {
+            if (f.preview) URL.revokeObjectURL(f.preview);
+          });
+          return { files: [] };
+        }),
 
       setWatermark: (settings) =>
         set((state) => ({

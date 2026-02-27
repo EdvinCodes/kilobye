@@ -198,7 +198,8 @@ export async function compressImage(
   file: File,
   format: OutputFormat = "original",
   maxWidth: number = 0,
-  watermarkSettings?: WatermarkSettings, // <--- OPCIONAL: Configuración de marca de agua
+  maxSizeMB: number = 0, // <--- NUEVO PARÁMETRO
+  watermarkSettings?: WatermarkSettings,
 ): Promise<Blob> {
   // 1. PROTECCIÓN DE GIFS
   // Si es un GIF, lo devolvemos intacto para no romper la animación.
@@ -220,7 +221,7 @@ export async function compressImage(
 
   // 3. CONFIGURAR COMPRESIÓN
   const targetMaxWidth = maxWidth === 0 ? 1920 : maxWidth;
-  const targetMaxSizeMB = maxWidth === 0 ? 1 : 50;
+  const targetMaxSizeMB = maxSizeMB > 0 ? maxSizeMB : maxWidth === 0 ? 1 : 50;
 
   // Browser-image-compression no soporta AVIF nativo en input 'fileType' a veces,
   // así que usamos WebP como intermedio si el destino es AVIF.
