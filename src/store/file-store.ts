@@ -70,7 +70,11 @@ export const useFileStore = create<FileState>()(
 
       toggleMute: () => set((state) => ({ isMuted: !state.isMuted })),
 
-      setMode: (mode) => set({ mode, files: [] }),
+      setMode: (mode) =>
+        set((state) => {
+          state.files.forEach((f) => URL.revokeObjectURL(f.preview));
+          return { mode, files: [] };
+        }),
 
       addFiles: (newFiles) =>
         set((state) => ({
@@ -78,9 +82,15 @@ export const useFileStore = create<FileState>()(
         })),
 
       removeFile: (id) =>
-        set((state) => ({
-          files: state.files.filter((f) => f.id !== id),
-        })),
+        set((state) => {
+          const fileToRemove = state.files.find((f) => f.id === id);
+          if (fileToRemove?.preview) {
+            URL.revokeObjectURL(fileToRemove.preview);
+          }
+          return {
+            files: state.files.filter((f) => f.id !== id),
+          };
+        }),
 
       updateFile: (id, updates) =>
         set((state) => ({
@@ -89,21 +99,25 @@ export const useFileStore = create<FileState>()(
           ),
         })),
 
-      // Actions Watermark
       setWatermark: (settings) =>
         set((state) => ({
           watermark: { ...state.watermark, ...settings },
         })),
 
       clearWatermark: () =>
-        set((state) => ({
-          watermark: {
-            ...state.watermark,
-            file: null,
-            preview: null,
-            isEnabled: false,
-          },
-        })),
+        set((state) => {
+          if (state.watermark.preview) {
+            URL.revokeObjectURL(state.watermark.preview);
+          }
+          return {
+            watermark: {
+              ...state.watermark,
+              file: null,
+              preview: null,
+              isEnabled: false,
+            },
+          };
+        }),
     }),
     {
       name: "kilobye-storage",

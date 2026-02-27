@@ -32,11 +32,17 @@ export function UploadDropzone() {
               duration = await new Promise<number>((resolve) => {
                 const video = document.createElement("video");
                 video.preload = "metadata";
+                const tempUrl = URL.createObjectURL(file);
+
                 video.onloadedmetadata = () => {
                   resolve(video.duration);
+                  URL.revokeObjectURL(tempUrl);
                 };
-                video.onerror = () => resolve(0);
-                video.src = URL.createObjectURL(file); // Usamos un blob temporal
+                video.onerror = () => {
+                  resolve(0);
+                  URL.revokeObjectURL(tempUrl);
+                };
+                video.src = tempUrl;
               });
             } catch (e) {
               console.error("Error leyendo duración", e);

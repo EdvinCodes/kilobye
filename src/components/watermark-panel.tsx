@@ -15,6 +15,10 @@ export function WatermarkPanel() {
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // Si ya había un logo cargado, limpiamos la URL anterior de la memoria RAM
+      if (watermark.preview) {
+        URL.revokeObjectURL(watermark.preview);
+      }
       const previewUrl = URL.createObjectURL(file);
       setWatermark({ file, preview: previewUrl, isEnabled: true });
     }
