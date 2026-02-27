@@ -77,27 +77,35 @@ export function FileList() {
     const pendingFiles = files.filter((f) => f.status !== "done");
 
     if (mode === "image") {
-      await Promise.all(
-        pendingFiles.map(async (imageFile) => {
-          try {
-            updateFile(imageFile.id, { status: "compressing" });
-            const compressedBlob = await compressImage(
-              imageFile.file,
-              outputFormat,
-              youtubePreset ? 1920 : maxWidth, // 1080p estándar para YT
-              youtubePreset ? 1.9 : 0, // 1.9MB para no pasarnos de los 2MB
-              watermark,
-            );
-            updateFile(imageFile.id, {
-              status: "done",
-              compressedFile: compressedBlob,
-              compressedSize: compressedBlob.size,
-            });
-          } catch {
-            updateFile(imageFile.id, { status: "error" });
-          }
-        }),
-      );
+      // PROCESAMIENTO POR LOTES (Batches) para evitar congelar la UI
+      const CONCURRENCY_LIMIT = 3;
+
+      for (let i = 0; i < pendingFiles.length; i += CONCURRENCY_LIMIT) {
+        const chunk = pendingFiles.slice(i, i + CONCURRENCY_LIMIT);
+
+        await Promise.all(
+          chunk.map(async (imageFile) => {
+            try {
+              updateFile(imageFile.id, { status: "compressing" });
+              const compressedBlob = await compressImage(
+                imageFile.file,
+                outputFormat,
+                youtubePreset ? 1920 : maxWidth,
+                youtubePreset ? 1.9 : 0,
+                watermark,
+              );
+              updateFile(imageFile.id, {
+                status: "done",
+                compressedFile: compressedBlob,
+                compressedSize: compressedBlob.size,
+              });
+            } catch (error) {
+              console.error("Error compressing image:", error);
+              updateFile(imageFile.id, { status: "error" });
+            }
+          }),
+        );
+      }
     } else {
       // --- MODO VIDEO ---
       for (const videoFile of pendingFiles) {

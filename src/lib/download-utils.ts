@@ -26,30 +26,44 @@ export function downloadBlob(blob: Blob, filename: string) {
 /**
  * Genera un ZIP con todos los archivos comprimidos y lo descarga
  */
-export async function downloadAllAsZip(files: MediaFile[]) { // <--- CAMBIO AQUÍ EL TIPO
+export async function downloadAllAsZip(files: MediaFile[]) {
   const zip = new JSZip();
   const folder = zip.folder("kilobye-optimized");
 
   let count = 0;
+  const usedNames = new Set<string>(); // <--- NUEVO: Registro de nombres
+
   files.forEach((media) => {
     if (media.status === "done" && media.compressedFile) {
-      
-      // Lógica simple para nombre: Si es video y no tiene extensión mp4, se la ponemos
-      // Si es imagen, usamos la lógica inteligente de utils
       let finalName = media.file.name;
-      
+
       if (media.file.type.startsWith("video")) {
-         const parts = media.file.name.split('.');
-         // Si ya es .mp4 lo dejamos, si no, forzamos .mp4 (ya que FFmpeg saca mp4)
-         if (parts[parts.length - 1] !== 'mp4') {
-            parts.pop();
-            finalName = parts.join('.') + ".mp4";
-         }
+        const parts = media.file.name.split(".");
+        if (parts[parts.length - 1] !== "mp4") {
+          parts.pop();
+          finalName = parts.join(".") + ".mp4";
+        }
       } else {
-         finalName = getCorrectFileName(media.file.name, media.compressedFile);
+        finalName = getCorrectFileName(media.file.name, media.compressedFile);
       }
 
-      folder?.file(finalName, media.compressedFile);
+      // --- NUEVO: LÓGICA ANTI-COLISIONES ---
+      let uniqueName = finalName;
+      let counter = 1;
+
+      // Mientras el nombre ya exista en el ZIP, le sumamos un número
+      while (usedNames.has(uniqueName)) {
+        const nameParts = finalName.split(".");
+        const ext = nameParts.length > 1 ? `.${nameParts.pop()}` : "";
+        const base = nameParts.join(".");
+        uniqueName = `${base} (${counter})${ext}`;
+        counter++;
+      }
+
+      usedNames.add(uniqueName); // Lo registramos como usado
+      // -------------------------------------
+
+      folder?.file(uniqueName, media.compressedFile);
       count++;
     }
   });
