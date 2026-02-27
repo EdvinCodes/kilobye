@@ -141,6 +141,7 @@ async function applyWatermark(
 async function forceFormatConversion(
   file: Blob,
   targetFormat: string,
+  customQuality: number = 0.75,
 ): Promise<Blob> {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -160,12 +161,6 @@ async function forceFormatConversion(
 
       ctx.drawImage(img, 0, 0);
 
-      // Calidad inteligente según formato
-      let quality = 0.8;
-      if (targetFormat === "image/avif") quality = 0.5; // AVIF es muy eficiente
-      if (targetFormat === "image/webp") quality = 0.75;
-      if (targetFormat === "image/jpeg") quality = 0.75;
-
       canvas.toBlob(
         (blob) => {
           URL.revokeObjectURL(url);
@@ -178,7 +173,7 @@ async function forceFormatConversion(
           }
         },
         targetFormat,
-        quality,
+        customQuality,
       );
     };
 
@@ -200,6 +195,7 @@ export async function compressImage(
   maxWidth: number = 0,
   maxSizeMB: number = 0, // <--- NUEVO PARÁMETRO
   watermarkSettings?: WatermarkSettings,
+  quality: number = 0.75,
 ): Promise<Blob> {
   // 1. PROTECCIÓN DE GIFS
   // Si es un GIF, lo devolvemos intacto para no romper la animación.
@@ -233,7 +229,7 @@ export async function compressImage(
     maxSizeMB: targetMaxSizeMB,
     maxWidthOrHeight: targetMaxWidth,
     useWebWorker: true,
-    initialQuality: 0.75,
+    initialQuality: quality,
     fileType: fileTypeForLibrary,
   };
 
@@ -246,9 +242,14 @@ export async function compressImage(
       compressedBlob = await forceFormatConversion(
         compressedBlob,
         "image/avif",
+        quality,
       );
     } else if (format !== "original" && compressedBlob.type !== format) {
-      compressedBlob = await forceFormatConversion(compressedBlob, format);
+      compressedBlob = await forceFormatConversion(
+        compressedBlob,
+        format,
+        quality,
+      );
     }
 
     return compressedBlob;
