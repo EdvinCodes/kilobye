@@ -29,15 +29,13 @@ export function useFFmpeg() {
     if (loaded) return;
     setIsLoading(true);
 
-    if (!ffmpegRef.current) {
-      ffmpegRef.current = new FFmpeg();
-    }
+    // ✅ FIX #3 — Siempre crear instancia fresca en load()
+    // Si la instancia anterior quedó en estado roto (load() falló a mitad),
+    // reutilizarla causaría comportamiento indefinido en ffmpeg.load()
+    ffmpegRef.current = new FFmpeg();
 
     const ffmpeg = ffmpegRef.current;
 
-    // --- FASE 4: MULTI-THREADING ACTIVADO ---
-    // Usamos la versión 'core-mt' (Multi-Thread)
-    // Esto requiere los headers COOP/COEP en next.config.ts
     const baseURL = "https://unpkg.com/@ffmpeg/core-mt@0.12.6/dist/umd";
 
     try {
@@ -50,7 +48,6 @@ export function useFFmpeg() {
           `${baseURL}/ffmpeg-core.wasm`,
           "application/wasm",
         ),
-        // El worker es vital para que el multi-hilo funcione sin congelar la web
         workerURL: await toBlobURL(
           `${baseURL}/ffmpeg-core.worker.js`,
           "text/javascript",
@@ -60,6 +57,9 @@ export function useFFmpeg() {
       setLoaded(true);
       console.log("🚀 KiloBye Engine: Multi-Threaded Core Loaded");
     } catch (error) {
+      // ✅ FIX #3 — Si falla, limpiar la ref para que el próximo intento
+      // entre en el bloque de creación de instancia fresca
+      ffmpegRef.current = null;
       console.error(
         "Fallo al cargar FFmpeg MT. Revisa los headers COOP/COEP.",
         error,
@@ -76,9 +76,9 @@ export function useFFmpeg() {
     duration?: number,
     watermarkSettings?: WatermarkSettings,
   ): Promise<Blob> => {
-    if (!ffmpegRef.current) ffmpegRef.current = new FFmpeg();
-    const ffmpeg = ffmpegRef.current;
+    // ✅ FIX #3 — Eliminar el new FFmpeg() de aquí, load() lo gestiona
     if (!loaded) await load();
+    const ffmpeg = ffmpegRef.current!;
 
     const inputName = "input" + getExt(file.name);
 
@@ -87,7 +87,6 @@ export function useFFmpeg() {
     if (settings.format === "mp3") outputExt = ".mp3";
     const outputName = "output" + outputExt;
 
-    // Escribir archivo principal en memoria (SharedArrayBuffer gracias a MT)
     await ffmpeg.writeFile(inputName, await fetchFile(file));
 
     // --- CASO ESPECIAL: MP3 (Solo audio) ---
@@ -113,7 +112,7 @@ export function useFFmpeg() {
       return new Blob([data as unknown as BlobPart], { type: "audio/mpeg" });
     }
 
-    // --- LOGICA DE VIDEO (MP4 / GIF) ---
+    // --- LÓGICA DE VIDEO (MP4 / GIF) ---
 
     // 1. Preparar Watermark si existe
     let hasWatermark = false;
@@ -132,7 +131,6 @@ export function useFFmpeg() {
       const m = watermarkSettings.margin;
       let x = "",
         y = "";
-
       switch (watermarkSettings.position) {
         case "top-left":
           x = `${m}`;
@@ -157,29 +155,41 @@ export function useFFmpeg() {
       }
 
       const logoScale = watermarkSettings.scale;
-
       let videoStream = "[0:v]";
       let scaleFilter = "";
 
       if (settings.resolution !== "original") {
-        scaleFilter = `[0:v]scale=-2:${settings.resolution}[bg];`;
+        scaleFilter = `${videoStream}scale=-2:${settings.resolution}[bg];`;
         videoStream = "[bg]";
       }
 
-      // Corrección de escala relativa (scale2ref)
-      filterComplex = `${scaleFilter}[1:v]${videoStream}scale2ref=w=iw*${logoScale}:h=-1[wm_scaled][video_ref];[video_ref][wm_scaled]overlay=${x}:${y}`;
+      filterComplex = `${scaleFilter}[1:v]scale2ref=${videoStream}*${logoScale}:-1[wm][scaled];[scaled][wm]overlay=${x}:${y}[out]`;
     } else if (settings.resolution !== "original") {
-      filterComplex = `scale=-2:${settings.resolution}`;
+      filterComplex = `[0:v]scale=-2:${settings.resolution}[out]`;
     }
 
-    // 3. Construir Comando Principal
-    const command: string[] = [];
+    // ✅ FIX #2 — GIF siempre necesita palettegen+paletteuse
+    // Sin esto: paleta genérica de 256 colores → banding o crash
+    if (settings.format === "gif") {
+      if (filterComplex) {
+        filterComplex = `${filterComplex};[out]split[s0][s1];[s0]palettegen=max_colors=256:stats_mode=diff[p];[s1][p]paletteuse=dither=bayer[gifout]`;
+      } else {
+        filterComplex = `[0:v]split[s0][s1];[s0]palettegen=max_colors=256:stats_mode=diff[p];[s1][p]paletteuse=dither=bayer[gifout]`;
+      }
+    }
 
+    // 3. Construir Comando
+    const command: string[] = [];
     command.push("-i", inputName);
     if (hasWatermark) command.push("-i", "watermark.png");
 
     if (filterComplex) {
       command.push("-filter_complex", filterComplex);
+      if (settings.format === "gif") {
+        command.push("-map", "[gifout]");
+      } else if (hasWatermark || settings.resolution !== "original") {
+        command.push("-map", "[out]");
+      }
     }
 
     if (settings.fps !== "original") {
@@ -192,7 +202,7 @@ export function useFFmpeg() {
       command.push("-c:a", "aac", "-b:a", "128k");
     }
 
-    // --- CALCULO DE BITRATE (Social Presets) ---
+    // --- CÁLCULO DE BITRATE (Social Presets) ---
     if (
       settings.targetSize &&
       duration &&
@@ -210,7 +220,6 @@ export function useFFmpeg() {
         Math.floor((targetMB * 8192) / duration) - audioBitrate;
       if (videoBitrate < 100) videoBitrate = 100;
 
-      // Pass 1: Ultrafast para velocidad máxima en navegador
       command.push(
         "-c:v",
         "libx264",
@@ -222,26 +231,30 @@ export function useFFmpeg() {
         `${videoBitrate * 2}k`,
         "-preset",
         "ultrafast",
-        // Threads: 0 deja que WASM decida (usará todos los cores disponibles gracias a MT)
         "-threads",
         "0",
       );
-    } else {
-      if (settings.format !== "gif") {
-        let crf = "28";
-        if (settings.quality === "high") crf = "23";
-        if (settings.quality === "low") crf = "32";
-        command.push(
-          "-c:v",
-          "libx264",
-          "-crf",
-          crf,
-          "-preset",
-          "ultrafast",
-          "-threads",
-          "0",
+    } else if (settings.format !== "gif") {
+      // ✅ FIX #2 — Aviso si targetSize fue ignorado por duration=0
+      if (settings.targetSize && (!duration || duration <= 0)) {
+        console.warn(
+          "[KiloBye] Target size ignorado: duración desconocida. Usando CRF por defecto.",
         );
       }
+
+      let crf = "28";
+      if (settings.quality === "high") crf = "23";
+      if (settings.quality === "low") crf = "32";
+      command.push(
+        "-c:v",
+        "libx264",
+        "-crf",
+        crf,
+        "-preset",
+        "ultrafast",
+        "-threads",
+        "0",
+      );
     }
 
     command.push(outputName);
@@ -282,5 +295,5 @@ async function cleanup(ffmpeg: FFmpeg, input: string, output: string) {
 
 function getExt(filename: string) {
   const ext = filename.split(".").pop();
-  return ext ? "." + ext : ".mp4";
+  return ext ? "." + ext : "";
 }

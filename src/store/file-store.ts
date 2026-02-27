@@ -78,19 +78,41 @@ export const useFileStore = create<FileState>()(
         }),
 
       addFiles: (newFiles) =>
-        set((state) => ({
-          files: [...state.files, ...newFiles],
-        })),
+        set((state) => {
+          // Identificamos archivos "duplicados" por nombre + tamaño
+          // (mismo criterio que usa el usuario mentalmente: mismo fichero)
+          const toReplace = state.files.filter((existing) =>
+            newFiles.some(
+              (n) =>
+                n.file.name === existing.file.name &&
+                n.file.size === existing.file.size,
+            ),
+          );
 
+          // ✅ Liberamos la memoria de las previews que van a ser reemplazadas
+          toReplace.forEach((f) => {
+            if (f.preview) URL.revokeObjectURL(f.preview);
+          });
+
+          // Quitamos los duplicados del array existente
+          const filtered = state.files.filter(
+            (existing) =>
+              !newFiles.some(
+                (n) =>
+                  n.file.name === existing.file.name &&
+                  n.file.size === existing.file.size,
+              ),
+          );
+
+          return { files: [...filtered, ...newFiles] };
+        }),
+
+      // ✅ Ya correcto en tu código
       removeFile: (id) =>
         set((state) => {
           const fileToRemove = state.files.find((f) => f.id === id);
-          if (fileToRemove?.preview) {
-            URL.revokeObjectURL(fileToRemove.preview);
-          }
-          return {
-            files: state.files.filter((f) => f.id !== id),
-          };
+          if (fileToRemove?.preview) URL.revokeObjectURL(fileToRemove.preview);
+          return { files: state.files.filter((f) => f.id !== id) };
         }),
 
       updateFile: (id, updates) =>
@@ -100,12 +122,27 @@ export const useFileStore = create<FileState>()(
           ),
         })),
 
+      // ✅ DESPUÉS — limpia también el watermark si está activo
       clearAllFiles: () =>
         set((state) => {
           state.files.forEach((f) => {
             if (f.preview) URL.revokeObjectURL(f.preview);
           });
-          return { files: [] };
+
+          // Si había un watermark cargado, liberamos su preview también
+          if (state.watermark.preview) {
+            URL.revokeObjectURL(state.watermark.preview);
+          }
+
+          return {
+            files: [],
+            watermark: {
+              ...state.watermark,
+              file: null,
+              preview: null,
+              isEnabled: false,
+            },
+          };
         }),
 
       setWatermark: (settings) =>

@@ -69,7 +69,8 @@ export function FileList() {
   });
 
   const isAllDone = files.length > 0 && files.every((f) => f.status === "done");
-  const hasPending = files.some((f) => f.status !== "done");
+  const hasPending = files.length > 0 && files.some((f) => f.status !== "done");
+  const isEmpty = files.length === 0;
 
   // NUEVO: Cálculos para la barra de progreso global
   const totalFiles = files.length;
@@ -108,7 +109,7 @@ export function FileList() {
                 youtubePreset ? 1920 : maxWidth,
                 youtubePreset ? 1.9 : 0,
                 watermark,
-                imageQuality[0] / 100,
+                (imageQuality[0] ?? 75) / 100,
               );
               updateFile(imageFile.id, {
                 status: "done",
@@ -226,7 +227,7 @@ export function FileList() {
                     playDelete();
                     clearAllFiles();
                   }}
-                  disabled={isProcessing}
+                  disabled={isProcessing || isEmpty}
                   className="h-6 px-2.5 py-0 text-[9px] text-red-400 hover:text-red-500 hover:bg-red-500/10 border-red-500/30 transition-colors ml-0 sm:ml-1"
                 >
                   <Trash2 className="w-3 h-3 mr-1.5" />
@@ -487,7 +488,11 @@ export function FileList() {
                   <Archive className="w-5 h-5" />
                   <span className="font-bold tracking-wide">DOWNLOAD PACK</span>
                   <span className="bg-white/20 px-2 py-0.5 rounded text-[10px] ml-1 font-mono">
-                    -{Math.round((totalSaved / totalOriginal) * 100)}%
+                    -
+                    {totalOriginal > 0
+                      ? Math.round((totalSaved / totalOriginal) * 100)
+                      : 0}
+                    %
                   </span>
                 </Button>
               ) : (
