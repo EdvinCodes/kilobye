@@ -71,6 +71,14 @@ export function FileList() {
   const isAllDone = files.length > 0 && files.every((f) => f.status === "done");
   const hasPending = files.some((f) => f.status !== "done");
 
+  // NUEVO: Cálculos para la barra de progreso global
+  const totalFiles = files.length;
+  const processedFiles = files.filter(
+    (f) => f.status === "done" || f.status === "error",
+  ).length;
+  const overallProgress =
+    totalFiles > 0 ? Math.round((processedFiles / totalFiles) * 100) : 0;
+
   useEffect(() => {
     if (mode === "video" && !ffmpegLoaded) {
       loadFFmpeg();
@@ -166,366 +174,415 @@ export function FileList() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className={cn(
-          "flex flex-col xl:flex-row items-start xl:items-center justify-between gap-6 p-4 md:p-6 rounded-2xl shadow-xl backdrop-blur-md",
+          // ¡AQUÍ ESTÁ LA CORRECCIÓN! (Solo flex-col y gap-4)
+          "flex flex-col gap-4 p-4 md:p-6 rounded-2xl shadow-xl backdrop-blur-md",
           "border-2",
           mode === "image"
             ? "bg-card/40 border-primary/20 shadow-primary/5"
             : "bg-violet-950/10 border-violet-500/20 shadow-violet-500/5",
         )}
       >
-        {/* IZQUIERDA: TITULO Y ESTADO */}
-        <div className="flex items-center gap-4 w-full xl:w-auto">
-          {/* El shrink-0 evita que el icono se aplaste si falta espacio */}
-          <div
-            className={cn(
-              "p-3 rounded-xl border shrink-0",
-              mode === "image"
-                ? "bg-primary/10 border-primary/30 text-primary"
-                : "bg-violet-500/10 border-violet-500/30 text-violet-400",
-            )}
-          >
-            <Settings2 className="w-6 h-6" />
+        {/* Contenedor de la fila superior (Izquierda y Derecha) */}
+        <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-6 w-full">
+          {/* IZQUIERDA: TITULO Y ESTADO */}
+          <div className="flex items-center gap-4 w-full xl:w-auto">
+            <div
+              className={cn(
+                "p-3 rounded-xl border shrink-0",
+                mode === "image"
+                  ? "bg-primary/10 border-primary/30 text-primary"
+                  : "bg-violet-500/10 border-violet-500/30 text-violet-400",
+              )}
+            >
+              <Settings2 className="w-6 h-6" />
+            </div>
+
+            <div className="flex flex-col justify-center min-w-0">
+              <h2 className="text-lg md:text-xl font-bold tracking-tight retro-text truncate">
+                OPERATION_CENTER
+              </h2>
+
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-[10px] font-mono text-muted-foreground mt-1">
+                <span className="flex items-center gap-1.5 whitespace-nowrap">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                  </span>
+                  SYSTEM_ONLINE
+                </span>
+
+                <span className="hidden sm:inline text-muted-foreground/30">
+                  |
+                </span>
+
+                <span className="whitespace-nowrap text-foreground/80 font-bold">
+                  {files.length} ASSETS LOADED
+                </span>
+
+                <Button
+                  variant="outline"
+                  size="xs"
+                  onClick={() => {
+                    playDelete();
+                    clearAllFiles();
+                  }}
+                  disabled={isProcessing}
+                  className="h-6 px-2.5 py-0 text-[9px] text-red-400 hover:text-red-500 hover:bg-red-500/10 border-red-500/30 transition-colors ml-0 sm:ml-1"
+                >
+                  <Trash2 className="w-3 h-3 mr-1.5" />
+                  CLEAR
+                </Button>
+              </div>
+            </div>
           </div>
 
-          {/* min-w-0 es un truco de flexbox para que el texto se trunque en lugar de desbordar */}
-          <div className="flex flex-col justify-center min-w-0">
-            <h2 className="text-lg md:text-xl font-bold tracking-tight retro-text truncate">
-              OPERATION_CENTER
-            </h2>
+          {/* DERECHA: CONTROLES */}
+          <div className="flex flex-col sm:flex-row flex-wrap gap-4 w-full xl:w-auto items-stretch sm:items-center justify-start xl:justify-end">
+            {/* --- CONTROLES MODO IMAGEN --- */}
+            {mode === "image" && (
+              <div className="flex flex-wrap gap-x-5 gap-y-4 items-center bg-background/50 p-3 md:px-5 rounded-xl border border-border/50 shadow-sm w-full sm:w-auto">
+                <div className="flex items-center">
+                  <Toggle
+                    pressed={youtubePreset}
+                    onPressedChange={setYoutubePreset}
+                    disabled={isProcessing || isAllDone}
+                    className="h-8 font-mono text-xs border border-red-500/30 data-[state=on]:bg-red-500/20 data-[state=on]:text-red-400 text-muted-foreground gap-2 transition-all"
+                  >
+                    <Youtube className="w-3 h-3" />
+                    YT THUMBNAIL (2MB)
+                  </Toggle>
+                </div>
 
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-[10px] font-mono text-muted-foreground mt-1">
-              <span className="flex items-center gap-1.5 whitespace-nowrap">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-                </span>
-                SYSTEM_ONLINE
-              </span>
+                <div className="w-px h-6 bg-border/50 hidden lg:block" />
 
-              <span className="hidden sm:inline text-muted-foreground/30">
-                |
-              </span>
+                <div className="flex items-center gap-2">
+                  <Label
+                    htmlFor="width"
+                    className="font-mono text-[10px] text-muted-foreground uppercase"
+                  >
+                    Max Width
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="width"
+                      type="number"
+                      value={maxWidth === 0 ? "" : maxWidth}
+                      placeholder="Auto (1920)"
+                      onChange={(e) => setMaxWidth(Number(e.target.value))}
+                      disabled={isProcessing || isAllDone}
+                      className="w-[120px] h-8 font-mono text-xs border-primary/20 bg-background/50 focus:border-primary/50 transition-colors"
+                    />
+                    <span className="absolute right-3 top-2 text-[9px] text-muted-foreground font-mono pointer-events-none">
+                      px
+                    </span>
+                  </div>
+                </div>
 
-              <span className="whitespace-nowrap text-foreground/80 font-bold">
-                {files.length} ASSETS LOADED
-              </span>
+                <div className="w-px h-6 bg-border/50 hidden lg:block" />
 
-              <Button
-                variant="outline"
-                size="xs"
-                onClick={() => {
-                  playDelete();
-                  clearAllFiles();
-                }}
-                disabled={isProcessing}
-                className="h-6 px-2.5 py-0 text-[9px] text-red-400 hover:text-red-500 hover:bg-red-500/10 border-red-500/30 transition-colors ml-0 sm:ml-1"
-              >
-                <Trash2 className="w-3 h-3 mr-1.5" />
-                CLEAR
-              </Button>
+                <div className="flex flex-col gap-1.5 min-w-[100px] flex-1 sm:flex-none">
+                  <div className="flex justify-between items-center leading-none">
+                    <Label className="font-mono text-[10px] text-muted-foreground uppercase">
+                      Quality
+                    </Label>
+                    <span className="font-mono text-[10px] text-primary font-bold">
+                      {imageQuality[0]}%
+                    </span>
+                  </div>
+                  <Slider
+                    value={imageQuality}
+                    onValueChange={setImageQuality}
+                    max={100}
+                    min={1}
+                    step={1}
+                    disabled={isProcessing || isAllDone}
+                    className="w-full"
+                  />
+                </div>
+
+                <div className="w-px h-6 bg-border/50 hidden lg:block" />
+
+                <div className="flex items-center gap-2">
+                  <Label className="font-mono text-[10px] text-muted-foreground uppercase">
+                    Format
+                  </Label>
+                  <Select
+                    value={outputFormat}
+                    onValueChange={(v) => setOutputFormat(v as OutputFormat)}
+                    disabled={isProcessing || isAllDone}
+                  >
+                    <SelectTrigger className="w-[120px] h-8 font-mono text-xs border-primary/20 bg-background/50 focus:border-primary/50">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="original">Original</SelectItem>
+                      <SelectItem value="image/jpeg">JPG</SelectItem>
+                      <SelectItem value="image/png">PNG</SelectItem>
+                      <SelectItem value="image/webp">WEBP</SelectItem>
+                      <SelectItem
+                        value="image/avif"
+                        className="font-bold text-violet-500"
+                      >
+                        AVIF (Ultra)
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
+
+            {/* --- CONTROLES MODO VIDEO --- */}
+            {mode === "video" && (
+              <div className="flex flex-wrap gap-x-4 gap-y-3 items-center bg-violet-500/5 p-3 rounded-xl border border-violet-500/20 w-full sm:w-auto">
+                <div className="flex flex-col gap-1.5">
+                  <Label className="font-mono text-[9px] text-violet-400/70 uppercase flex items-center gap-1">
+                    <Target className="w-3 h-3" /> Target Size
+                  </Label>
+                  <Select
+                    value={videoSettings.targetSize || "none"}
+                    onValueChange={(v) =>
+                      setVideoSettings((p) => ({
+                        ...p,
+                        targetSize:
+                          v === "none" ? null : (v as TargetSizePreset),
+                      }))
+                    }
+                    disabled={
+                      isProcessing ||
+                      isAllDone ||
+                      videoSettings.format !== "mp4"
+                    }
+                  >
+                    <SelectTrigger className="w-[140px] h-8 font-mono text-xs border-violet-500/30 text-violet-300 bg-violet-950/20 focus:ring-violet-500/50">
+                      <SelectValue placeholder="Select Target" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Default (Auto)</SelectItem>
+                      <SelectItem value="discord-8mb">Discord (8MB)</SelectItem>
+                      <SelectItem value="whatsapp-16mb">
+                        WhatsApp (16MB)
+                      </SelectItem>
+                      <SelectItem value="email-25mb">Email (25MB)</SelectItem>
+                      <SelectItem value="custom-10mb">Custom (10MB)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="w-px h-8 bg-violet-500/20 hidden sm:block" />
+
+                <div className="flex flex-col gap-1.5">
+                  <Label className="font-mono text-[9px] text-violet-400/70 uppercase font-bold">
+                    Output Format
+                  </Label>
+                  <Select
+                    value={videoSettings.format}
+                    onValueChange={(v) =>
+                      setVideoSettings((p) => ({
+                        ...p,
+                        format: v as VideoSettings["format"],
+                      }))
+                    }
+                    disabled={isProcessing || isAllDone}
+                  >
+                    <SelectTrigger className="w-[90px] h-8 font-mono text-xs border-violet-500/30 text-violet-300 bg-violet-950/20">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="mp4">MP4 (Video)</SelectItem>
+                      <SelectItem value="gif">GIF (Anim)</SelectItem>
+                      <SelectItem value="mp3">MP3 (Audio)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="w-px h-8 bg-violet-500/20 hidden sm:block" />
+
+                <div className="flex flex-col gap-1.5 items-center">
+                  <Label className="font-mono text-[9px] text-violet-400/70 uppercase">
+                    Audio
+                  </Label>
+                  <Toggle
+                    pressed={!videoSettings.removeAudio}
+                    onPressedChange={(pressed) =>
+                      setVideoSettings((p) => ({ ...p, removeAudio: !pressed }))
+                    }
+                    disabled={
+                      isProcessing ||
+                      isAllDone ||
+                      videoSettings.format === "gif"
+                    }
+                    className="h-8 w-8 data-[state=on]:bg-violet-500/20 data-[state=on]:text-violet-300 border border-violet-500/30"
+                  >
+                    {videoSettings.removeAudio ? (
+                      <VolumeX className="w-4 h-4" />
+                    ) : (
+                      <Volume2 className="w-4 h-4" />
+                    )}
+                  </Toggle>
+                </div>
+
+                {!videoSettings.targetSize &&
+                  videoSettings.format === "mp4" && (
+                    <>
+                      <div className="w-px h-8 bg-violet-500/20 hidden sm:block" />
+                      <div className="flex flex-col gap-1.5">
+                        <Label className="font-mono text-[9px] text-violet-400/70 uppercase">
+                          Res / FPS
+                        </Label>
+                        <div className="flex gap-1.5">
+                          <Select
+                            value={videoSettings.resolution}
+                            onValueChange={(v) =>
+                              setVideoSettings((p) => ({
+                                ...p,
+                                resolution: v as VideoSettings["resolution"],
+                              }))
+                            }
+                            disabled={isProcessing || isAllDone}
+                          >
+                            <SelectTrigger className="w-[70px] h-8 font-mono text-xs border-violet-500/30 text-violet-300 bg-violet-950/20">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="original">Orig</SelectItem>
+                              <SelectItem value="1080">1080p</SelectItem>
+                              <SelectItem value="720">720p</SelectItem>
+                              <SelectItem value="480">480p</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <Select
+                            value={videoSettings.fps}
+                            onValueChange={(v) =>
+                              setVideoSettings((p) => ({
+                                ...p,
+                                fps: v as VideoSettings["fps"],
+                              }))
+                            }
+                            disabled={isProcessing || isAllDone}
+                          >
+                            <SelectTrigger className="w-[65px] h-8 font-mono text-xs border-violet-500/30 text-violet-300 bg-violet-950/20">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="original">Orig</SelectItem>
+                              <SelectItem value="60">60fps</SelectItem>
+                              <SelectItem value="30">30fps</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </>
+                  )}
+              </div>
+            )}
+
+            {/* BOTÓN START / DOWNLOAD */}
+            <div className="w-full sm:w-auto">
+              {isAllDone ? (
+                <Button
+                  size="lg"
+                  onClick={handleDownloadZip}
+                  className="w-full sm:w-auto h-12 rounded-xl gap-2 shadow-[0_0_20px_-5px_var(--color-primary)] bg-primary hover:bg-primary/90 animate-in zoom-in duration-300 border-2 border-white/20"
+                >
+                  <Archive className="w-5 h-5" />
+                  <span className="font-bold tracking-wide">DOWNLOAD PACK</span>
+                  <span className="bg-white/20 px-2 py-0.5 rounded text-[10px] ml-1 font-mono">
+                    -{Math.round((totalSaved / totalOriginal) * 100)}%
+                  </span>
+                </Button>
+              ) : (
+                <Button
+                  size="lg"
+                  onClick={handleCompressAll}
+                  disabled={
+                    isProcessing ||
+                    !hasPending ||
+                    (mode === "video" && ffmpegLoading)
+                  }
+                  className={cn(
+                    "w-full sm:w-auto h-12 rounded-xl gap-3 shadow-lg whitespace-nowrap transition-all duration-300 border-2 border-white/10",
+                    isProcessing || (mode === "video" && ffmpegLoading)
+                      ? "bg-muted cursor-not-allowed opacity-80"
+                      : "hover:scale-105 active:scale-95",
+                  )}
+                >
+                  {isProcessing ? (
+                    <>
+                      <Cpu className="w-5 h-5 animate-spin" />
+                      <span className="animate-pulse font-mono">
+                        PROCESSING...
+                      </span>
+                    </>
+                  ) : mode === "video" && ffmpegLoading ? (
+                    <>
+                      <Cpu className="w-5 h-5 animate-pulse text-violet-400" />
+                      <span className="animate-pulse font-mono text-violet-400">
+                        BOOTING ENGINE...
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <Zap
+                        className={cn(
+                          "w-5 h-5 fill-current",
+                          mode === "video"
+                            ? "text-violet-200"
+                            : "text-yellow-200",
+                        )}
+                      />
+                      <span className="font-black tracking-widest text-base">
+                        START ENGINE
+                      </span>
+                    </>
+                  )}
+                </Button>
+              )}
             </div>
           </div>
         </div>
 
-        {/* DERECHA: CONTROLES */}
-        <div className="flex flex-col sm:flex-row flex-wrap gap-4 w-full xl:w-auto items-stretch sm:items-center justify-start xl:justify-end">
-          {/* --- CONTROLES MODO IMAGEN --- */}
-          {mode === "image" && (
-            <div className="flex flex-wrap gap-x-5 gap-y-4 items-center bg-background/50 p-3 md:px-5 rounded-xl border border-border/50 shadow-sm w-full sm:w-auto">
-              <div className="flex items-center">
-                <Toggle
-                  pressed={youtubePreset}
-                  onPressedChange={setYoutubePreset}
-                  disabled={isProcessing || isAllDone}
-                  className="h-8 font-mono text-xs border border-red-500/30 data-[state=on]:bg-red-500/20 data-[state=on]:text-red-400 text-muted-foreground gap-2 transition-all"
-                >
-                  <Youtube className="w-3 h-3" />
-                  YT THUMBNAIL (2MB)
-                </Toggle>
-              </div>
-
-              <div className="w-px h-6 bg-border/50 hidden lg:block" />
-
-              <div className="flex items-center gap-2">
-                <Label
-                  htmlFor="width"
-                  className="font-mono text-[10px] text-muted-foreground uppercase"
-                >
-                  Max Width
-                </Label>
-                <div className="relative">
-                  <Input
-                    id="width"
-                    type="number"
-                    value={maxWidth === 0 ? "" : maxWidth}
-                    placeholder="Auto (1920)"
-                    onChange={(e) => setMaxWidth(Number(e.target.value))}
-                    disabled={isProcessing || isAllDone}
-                    className="w-[120px] h-8 font-mono text-xs border-primary/20 bg-background/50 focus:border-primary/50 transition-colors"
-                  />
-                  <span className="absolute right-3 top-2 text-[9px] text-muted-foreground font-mono pointer-events-none">
-                    px
-                  </span>
-                </div>
-              </div>
-
-              <div className="w-px h-6 bg-border/50 hidden lg:block" />
-
-              <div className="flex flex-col gap-1.5 min-w-[100px] flex-1 sm:flex-none">
-                <div className="flex justify-between items-center leading-none">
-                  <Label className="font-mono text-[10px] text-muted-foreground uppercase">
-                    Quality
-                  </Label>
-                  <span className="font-mono text-[10px] text-primary font-bold">
-                    {imageQuality[0]}%
-                  </span>
-                </div>
-                <Slider
-                  value={imageQuality}
-                  onValueChange={setImageQuality}
-                  max={100}
-                  min={1}
-                  step={1}
-                  disabled={isProcessing || isAllDone}
-                  className="w-full"
-                />
-              </div>
-
-              <div className="w-px h-6 bg-border/50 hidden lg:block" />
-
-              <div className="flex items-center gap-2">
-                <Label className="font-mono text-[10px] text-muted-foreground uppercase">
-                  Format
-                </Label>
-                <Select
-                  value={outputFormat}
-                  onValueChange={(v) => setOutputFormat(v as OutputFormat)}
-                  disabled={isProcessing || isAllDone}
-                >
-                  <SelectTrigger className="w-[120px] h-8 font-mono text-xs border-primary/20 bg-background/50 focus:border-primary/50">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="original">Original</SelectItem>
-                    <SelectItem value="image/jpeg">JPG</SelectItem>
-                    <SelectItem value="image/png">PNG</SelectItem>
-                    <SelectItem value="image/webp">WEBP</SelectItem>
-                    <SelectItem
-                      value="image/avif"
-                      className="font-bold text-violet-500"
-                    >
-                      AVIF (Ultra)
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          )}
-
-          {/* --- CONTROLES MODO VIDEO --- */}
-          {mode === "video" && (
-            <div className="flex flex-wrap gap-x-4 gap-y-3 items-center bg-violet-500/5 p-3 rounded-xl border border-violet-500/20 w-full sm:w-auto">
-              <div className="flex flex-col gap-1.5">
-                <Label className="font-mono text-[9px] text-violet-400/70 uppercase flex items-center gap-1">
-                  <Target className="w-3 h-3" /> Target Size
-                </Label>
-                <Select
-                  value={videoSettings.targetSize || "none"}
-                  onValueChange={(v) =>
-                    setVideoSettings((p) => ({
-                      ...p,
-                      targetSize: v === "none" ? null : (v as TargetSizePreset),
-                    }))
-                  }
-                  disabled={
-                    isProcessing || isAllDone || videoSettings.format !== "mp4"
-                  }
-                >
-                  <SelectTrigger className="w-[140px] h-8 font-mono text-xs border-violet-500/30 text-violet-300 bg-violet-950/20 focus:ring-violet-500/50">
-                    <SelectValue placeholder="Select Target" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Default (Auto)</SelectItem>
-                    <SelectItem value="discord-8mb">Discord (8MB)</SelectItem>
-                    <SelectItem value="whatsapp-16mb">
-                      WhatsApp (16MB)
-                    </SelectItem>
-                    <SelectItem value="email-25mb">Email (25MB)</SelectItem>
-                    <SelectItem value="custom-10mb">Custom (10MB)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="w-px h-8 bg-violet-500/20 hidden sm:block" />
-
-              <div className="flex flex-col gap-1.5">
-                <Label className="font-mono text-[9px] text-violet-400/70 uppercase font-bold">
-                  Output Format
-                </Label>
-                <Select
-                  value={videoSettings.format}
-                  onValueChange={(v) =>
-                    setVideoSettings((p) => ({
-                      ...p,
-                      format: v as VideoSettings["format"],
-                    }))
-                  }
-                  disabled={isProcessing || isAllDone}
-                >
-                  <SelectTrigger className="w-[90px] h-8 font-mono text-xs border-violet-500/30 text-violet-300 bg-violet-950/20">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="mp4">MP4 (Video)</SelectItem>
-                    <SelectItem value="gif">GIF (Anim)</SelectItem>
-                    <SelectItem value="mp3">MP3 (Audio)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="w-px h-8 bg-violet-500/20 hidden sm:block" />
-
-              <div className="flex flex-col gap-1.5 items-center">
-                <Label className="font-mono text-[9px] text-violet-400/70 uppercase">
-                  Audio
-                </Label>
-                <Toggle
-                  pressed={!videoSettings.removeAudio}
-                  onPressedChange={(pressed) =>
-                    setVideoSettings((p) => ({ ...p, removeAudio: !pressed }))
-                  }
-                  disabled={
-                    isProcessing || isAllDone || videoSettings.format === "gif"
-                  }
-                  className="h-8 w-8 data-[state=on]:bg-violet-500/20 data-[state=on]:text-violet-300 border border-violet-500/30"
-                >
-                  {videoSettings.removeAudio ? (
-                    <VolumeX className="w-4 h-4" />
-                  ) : (
-                    <Volume2 className="w-4 h-4" />
-                  )}
-                </Toggle>
-              </div>
-
-              {!videoSettings.targetSize && videoSettings.format === "mp4" && (
-                <>
-                  <div className="w-px h-8 bg-violet-500/20 hidden sm:block" />
-                  <div className="flex flex-col gap-1.5">
-                    <Label className="font-mono text-[9px] text-violet-400/70 uppercase">
-                      Res / FPS
-                    </Label>
-                    <div className="flex gap-1.5">
-                      <Select
-                        value={videoSettings.resolution}
-                        onValueChange={(v) =>
-                          setVideoSettings((p) => ({
-                            ...p,
-                            resolution: v as VideoSettings["resolution"],
-                          }))
-                        }
-                        disabled={isProcessing || isAllDone}
-                      >
-                        <SelectTrigger className="w-[70px] h-8 font-mono text-xs border-violet-500/30 text-violet-300 bg-violet-950/20">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="original">Orig</SelectItem>
-                          <SelectItem value="1080">1080p</SelectItem>
-                          <SelectItem value="720">720p</SelectItem>
-                          <SelectItem value="480">480p</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <Select
-                        value={videoSettings.fps}
-                        onValueChange={(v) =>
-                          setVideoSettings((p) => ({
-                            ...p,
-                            fps: v as VideoSettings["fps"],
-                          }))
-                        }
-                        disabled={isProcessing || isAllDone}
-                      >
-                        <SelectTrigger className="w-[65px] h-8 font-mono text-xs border-violet-500/30 text-violet-300 bg-violet-950/20">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="original">Orig</SelectItem>
-                          <SelectItem value="60">60fps</SelectItem>
-                          <SelectItem value="30">30fps</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-
-          {/* BOTÓN START / DOWNLOAD */}
-          <div className="w-full sm:w-auto">
-            {isAllDone ? (
-              <Button
-                size="lg"
-                onClick={handleDownloadZip}
-                className="w-full sm:w-auto h-12 rounded-xl gap-2 shadow-[0_0_20px_-5px_var(--color-primary)] bg-primary hover:bg-primary/90 animate-in zoom-in duration-300 border-2 border-white/20"
-              >
-                <Archive className="w-5 h-5" />
-                <span className="font-bold tracking-wide">DOWNLOAD PACK</span>
-                <span className="bg-white/20 px-2 py-0.5 rounded text-[10px] ml-1 font-mono">
-                  -{Math.round((totalSaved / totalOriginal) * 100)}%
-                </span>
-              </Button>
-            ) : (
-              <Button
-                size="lg"
-                onClick={handleCompressAll}
-                // Añadimos el bloqueo si está cargando FFmpeg en modo vídeo
-                disabled={
-                  isProcessing ||
-                  !hasPending ||
-                  (mode === "video" && ffmpegLoading)
-                }
-                className={cn(
-                  "w-full sm:w-auto h-12 rounded-xl gap-3 shadow-lg whitespace-nowrap transition-all duration-300 border-2 border-white/10",
-                  isProcessing || (mode === "video" && ffmpegLoading)
-                    ? "bg-muted cursor-not-allowed opacity-80"
-                    : "hover:scale-105 active:scale-95",
-                )}
-              >
-                {isProcessing ? (
+        {/* --- NUEVO: BARRA DE PROGRESO GLOBAL --- */}
+        {(isProcessing || (isAllDone && totalFiles > 1)) && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            className="w-full mt-2 pt-4 border-t border-border/40"
+          >
+            <div className="flex justify-between items-end mb-2">
+              <span className="font-mono text-[10px] text-muted-foreground uppercase flex items-center gap-2">
+                {isAllDone ? (
                   <>
-                    <Cpu className="w-5 h-5 animate-spin" />
-                    <span className="animate-pulse font-mono">
-                      PROCESSING...
-                    </span>
-                  </>
-                ) : mode === "video" && ffmpegLoading ? (
-                  // NUEVO: ESTADO DE BOOTEO FFMPEG
-                  <>
-                    <Cpu className="w-5 h-5 animate-pulse text-violet-400" />
-                    <span className="animate-pulse font-mono text-violet-400">
-                      BOOTING ENGINE...
-                    </span>
+                    <Zap className="w-3 h-3 text-green-500" /> BATCH COMPLETE
                   </>
                 ) : (
                   <>
-                    <Zap
-                      className={cn(
-                        "w-5 h-5 fill-current",
-                        mode === "video"
-                          ? "text-violet-200"
-                          : "text-yellow-200",
-                      )}
-                    />
-                    <span className="font-black tracking-widest text-base">
-                      START ENGINE
-                    </span>
+                    <Cpu className="w-3 h-3 animate-spin text-primary" />{" "}
+                    PROCESSING BATCH...
                   </>
                 )}
-              </Button>
-            )}
-          </div>
-        </div>
+              </span>
+              <span className="font-mono text-xs font-bold text-foreground">
+                {processedFiles}{" "}
+                <span className="text-muted-foreground">/ {totalFiles}</span>
+              </span>
+            </div>
+
+            {/* Contenedor de la barra (estilo retro) */}
+            <div className="w-full h-2.5 bg-black/20 rounded-full overflow-hidden border border-border/50 shadow-inner p-[1px]">
+              <motion.div
+                className={cn(
+                  "h-full rounded-full transition-colors duration-300",
+                  isAllDone
+                    ? "bg-green-500 shadow-[0_0_10px_var(--color-green-500)]"
+                    : "bg-primary shadow-[0_0_10px_var(--color-primary)]",
+                )}
+                initial={{ width: "0%" }}
+                animate={{ width: `${overallProgress}%` }}
+                transition={{ duration: 0.3, ease: "easeOut" }}
+              />
+            </div>
+          </motion.div>
+        )}
       </motion.div>
 
       {/* --- PANEL WATERMARK (NUEVO) --- */}
